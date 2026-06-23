@@ -9,8 +9,6 @@
   --magenta: #FF00AA;
   --purple:  #7A00FF;
   --white:   #D6D6FF;
-  --cyan-10: rgba(0,247,255,0.10);
-  --cyan-20: rgba(0,247,255,0.20);
   --cyan-40: rgba(0,247,255,0.40);
 }
 
@@ -24,7 +22,7 @@ html, body {
 }
 
 /* ============================================================
-   CRT OVERLAY
+   CRT SCANLINES
    ============================================================ */
 #crt {
   position: fixed; inset: 0; z-index: 900; pointer-events: none;
@@ -39,13 +37,14 @@ html, body {
    CORNER CHROME
    ============================================================ */
 .corner {
-  position: fixed; width: 60px; height: 60px; z-index: 50; pointer-events: none;
+  position: fixed; width: 60px; height: 60px;
+  z-index: 50; pointer-events: none;
   opacity: 0; transition: opacity 1s;
 }
-.corner.visible { opacity: 0.6; }
-.corner-tl { top: 20px; left: 20px; border-top: 1px solid var(--cyan); border-left: 1px solid var(--cyan); }
-.corner-tr { top: 20px; right: 20px; border-top: 1px solid var(--cyan); border-right: 1px solid var(--cyan); }
-.corner-bl { bottom: 20px; left: 20px; border-bottom: 1px solid var(--cyan); border-left: 1px solid var(--cyan); }
+.corner.visible { opacity: 0.55; }
+.corner-tl { top: 20px;    left: 20px;  border-top: 1px solid var(--cyan); border-left:  1px solid var(--cyan); }
+.corner-tr { top: 20px;    right: 20px; border-top: 1px solid var(--cyan); border-right: 1px solid var(--cyan); }
+.corner-bl { bottom: 20px; left: 20px;  border-bottom: 1px solid var(--cyan); border-left:  1px solid var(--cyan); }
 .corner-br { bottom: 20px; right: 20px; border-bottom: 1px solid var(--cyan); border-right: 1px solid var(--cyan); }
 
 /* ============================================================
@@ -58,63 +57,51 @@ html, body {
   background: rgba(8,8,18,0.85);
   opacity: 0; transition: opacity 1s;
 }
-#hud-top { top: 0; border-bottom: 1px solid rgba(0,247,255,0.12); }
-#hud-bottom { bottom: 0; border-top: 1px solid rgba(0,247,255,0.12); }
+#hud-top    { top: 0;    border-bottom: 1px solid rgba(0,247,255,0.12); }
+#hud-bottom { bottom: 0; border-top:    1px solid rgba(0,247,255,0.12); }
 #hud-top.visible, #hud-bottom.visible { opacity: 1; }
 
-.hud-left, .hud-right { display: flex; align-items: center; gap: 12px; }
-.hud-label { font-size: 13px; letter-spacing: 0.12em; color: rgba(0,247,255,0.45); text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hud-left, .hud-right { display: flex; align-items: center; gap: 14px; }
+.hud-label { font-size: 13px; letter-spacing: 0.12em; color: rgba(0,247,255,0.45); text-transform: uppercase; white-space: nowrap; }
 .hud-val   { font-size: 13px; letter-spacing: 0.08em; color: var(--cyan); white-space: nowrap; }
 .hud-sep   { color: rgba(0,247,255,0.2); }
 
 /* ============================================================
-   BACKGROUND CANVAS
+   SPACE CANVAS
    ============================================================ */
-#bg-canvas { position: fixed; inset: 0; z-index: 0; }
+#space-canvas { position: fixed; inset: 0; z-index: 0; }
 
 /* ============================================================
-   STAGE (portrait area)
+   STAGE — identity + nav centered on screen
    ============================================================ */
 #stage {
   position: fixed;
   top: 42px; bottom: 42px; left: 0; right: 0;
   z-index: 10;
   display: flex; align-items: center; justify-content: center;
-  overflow: hidden;
+  pointer-events: none; /* let mouse events pass to canvas */
 }
 
-#portrait-wrap {
-  display: flex; flex-direction: column; align-items: center; gap: 16px;
-  max-height: 100%;
-  /* Keep portrait centered away from the info panel */
-  margin-right: 200px;
-}
-
-/* ============================================================
-   ASCII PORTRAIT
-   ============================================================ */
-#portrait {
-  font-size: 18px;
-  line-height: 1.2;
-  letter-spacing: 0.05em;
-  white-space: pre;
-  user-select: none;
-  text-shadow: 0 0 6px rgba(0,247,255,0.3);
-  transition: filter 0.08s;
-  will-change: contents;
+#center-ui {
+  display: flex; flex-direction: column; align-items: center; gap: 28px;
+  pointer-events: none;
 }
 
 /* ============================================================
-   IDENTITY BLOCK
+   IDENTITY
    ============================================================ */
 #identity {
   text-align: center;
-  opacity: 0; transition: opacity 0.6s;
+  opacity: 0; transition: opacity 0.8s;
+  pointer-events: none;
 }
 #identity.visible { opacity: 1; }
+
 #identity h1 {
   font-size: 24px; letter-spacing: 0.4em;
-  color: var(--white); text-transform: uppercase; margin-bottom: 10px;
+  color: var(--white); text-transform: uppercase;
+  margin-bottom: 10px;
+  text-shadow: 0 0 30px rgba(0,247,255,0.2);
 }
 #identity p {
   font-size: 16px; letter-spacing: 0.25em;
@@ -122,36 +109,39 @@ html, body {
 }
 
 /* ============================================================
-   CASE STUDY NAV NODES
+   CASE STUDY NAV
    ============================================================ */
 #case-nav {
   display: flex; gap: 16px; flex-wrap: wrap; justify-content: center;
-  max-width: 580px;
-  opacity: 0; transition: opacity 0.6s;
+  max-width: 640px;
+  opacity: 0; transition: opacity 0.5s;
+  pointer-events: none;
 }
-#case-nav.visible { opacity: 1; }
+#case-nav.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
 
 .cs-node {
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;
-  padding: 12px 14px; min-height: 44px; cursor: pointer;
-  text-decoration: none; color: inherit;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 6px; padding: 12px 16px; min-height: 44px;
+  text-decoration: none; color: inherit; cursor: pointer;
   transition: transform 0.2s;
+  background: rgba(8,8,18,0.6);
+  border: 1px solid rgba(0,247,255,0.1);
 }
-.cs-node:hover { transform: translateY(-3px); }
-.cs-node:hover .cs-id   { color: var(--magenta); text-shadow: 0 0 10px var(--magenta); }
+.cs-node:hover { transform: translateY(-4px); border-color: rgba(255,0,170,0.4); }
+.cs-node:hover .cs-id    { color: var(--magenta); text-shadow: 0 0 12px var(--magenta); }
 .cs-node:hover .cs-title { color: var(--magenta); }
-.cs-node:hover .cs-tag  { border-color: var(--magenta); color: var(--magenta); }
+.cs-node:hover .cs-tag   { border-color: var(--magenta); color: var(--magenta); }
 
-.cs-id    { font-size: 16px; letter-spacing: 0.2em; color: var(--cyan);
-            text-shadow: 0 0 6px var(--cyan); transition: all 0.2s; }
-.cs-title { font-size: 14px; letter-spacing: 0.15em; color: var(--white);
-            text-transform: uppercase; transition: all 0.2s; }
-.cs-tag   { font-size: 12px; letter-spacing: 0.08em; color: rgba(122,0,255,0.8);
-            border: 1px solid rgba(122,0,255,0.35); padding: 4px 12px;
-            transition: all 0.2s; }
+.cs-id    { font-size: 16px; letter-spacing: 0.2em;  color: var(--cyan); text-shadow: 0 0 6px var(--cyan); transition: all 0.2s; }
+.cs-title { font-size: 14px; letter-spacing: 0.15em; color: var(--white); text-transform: uppercase; transition: all 0.2s; }
+.cs-tag   { font-size: 12px; letter-spacing: 0.08em; color: rgba(122,0,255,0.85);
+            border: 1px solid rgba(122,0,255,0.3); padding: 4px 12px; transition: all 0.2s; }
 
 /* ============================================================
-   INFO PANEL (right side)
+   INFO PANEL
    ============================================================ */
 #info-panel {
   position: fixed; right: 28px; top: 50%; transform: translateY(-50%);
@@ -162,9 +152,9 @@ html, body {
 
 .info-row {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 6px 0; border-bottom: 1px solid rgba(0,247,255,0.07);
+  padding: 7px 0; border-bottom: 1px solid rgba(0,247,255,0.07);
 }
-.info-key { font-size: 13px; letter-spacing: 0.1em; color: rgba(0,247,255,0.35); text-transform: uppercase; }
+.info-key { font-size: 13px; letter-spacing: 0.1em;  color: rgba(0,247,255,0.35); text-transform: uppercase; }
 .info-val { font-size: 13px; letter-spacing: 0.05em; color: var(--white); }
 .info-val.cyan { color: var(--cyan); }
 
@@ -179,9 +169,9 @@ html, body {
   opacity: 0; transition: opacity 0.15s;
 }
 #tooltip.show { opacity: 1; }
-#tt-id    { font-size: 12px; letter-spacing: 0.3em; color: var(--cyan); margin-bottom: 6px; }
-#tt-title { font-size: 12px; color: var(--white); line-height: 1.6; letter-spacing: 0.04em; margin-bottom: 10px; }
-#tt-tags  { font-size: 11px; color: var(--magenta); letter-spacing: 0.12em; display: block; }
+#tt-id    { font-size: 12px; letter-spacing: 0.3em;  color: var(--cyan);    margin-bottom: 6px; }
+#tt-title { font-size: 12px; letter-spacing: 0.04em; color: var(--white);   line-height: 1.6; margin-bottom: 10px; }
+#tt-tags  { font-size: 11px; letter-spacing: 0.12em; color: var(--magenta); display: block; }
 
 /* ============================================================
    BOOT SCREEN
@@ -190,17 +180,18 @@ html, body {
   position: fixed; inset: 0; z-index: 999;
   background: var(--bg);
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 14px;
+  gap: 16px;
   transition: opacity 0.8s;
 }
 #boot.hidden { opacity: 0; pointer-events: none; }
 
 #boot-text {
-  font-size: 13px; letter-spacing: 0.4em; color: rgba(0,247,255,0.55);
-  text-transform: uppercase;
+  font-size: 13px; letter-spacing: 0.4em;
+  color: rgba(0,247,255,0.55); text-transform: uppercase;
 }
 #boot-bar {
-  width: 180px; height: 1px; background: rgba(0,247,255,0.1); overflow: hidden;
+  width: 200px; height: 1px;
+  background: rgba(0,247,255,0.1); overflow: hidden;
 }
 #boot-progress {
   height: 100%; width: 0; background: var(--cyan);
@@ -208,6 +199,6 @@ html, body {
   transition: width 1.6s linear;
 }
 #boot-sub {
-  font-size: 11px; letter-spacing: 0.3em; color: rgba(122,0,255,0.5);
-  text-transform: uppercase;
+  font-size: 11px; letter-spacing: 0.3em;
+  color: rgba(122,0,255,0.5); text-transform: uppercase;
 }
