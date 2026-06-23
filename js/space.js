@@ -59,7 +59,8 @@ class Space {
       nx: (Math.random() - 0.5) * 2,
       ny: (Math.random() - 0.5) * 2,
       z,                               // depth: 1=far, 0=close/passed
-      baseSpeed: 0.0008 + Math.random() * 0.0012,
+      // Each star gets its own speed — spread across a wide range for depth variation
+      baseSpeed: 0.0003 + Math.random() * Math.random() * 0.004,
       char: STAR_CHARS[Math.floor(Math.random() * STAR_CHARS.length)],
       color,
       twinklePhase: Math.random() * Math.PI * 2,
@@ -68,22 +69,31 @@ class Space {
   }
 
   _initPlanets() {
-    // 5 planets, each associated with a case study
-    this.planets = CASE_STUDIES.map((cs, i) => {
-      const angle = (i / CASE_STUDIES.length) * Math.PI * 2;
-      return {
-        cs,
-        nx: Math.cos(angle) * (0.25 + Math.random() * 0.2),
-        ny: Math.sin(angle) * (0.18 + Math.random() * 0.15),
-        z: 0.3 + i * 0.14,
-        speed: 0.0012 + i * 0.0003,
-        radius: 28 + i * 6,           // px at z=1, scales with depth
-        hasRing: i % 2 === 0,
-        color: cs.color,
+    // Two large decorative planets — edge-hugging, slow-moving
+    this.planets = [
+      {
+        // Left planet — ringed, cyan
+        nx: -0.72, ny: 0.28,
+        z: 0.18,
+        speed: 0.00008,
+        radius: 90,
+        hasRing: true,
+        color: '#00F7FF',
+        glowPulse: 0,
         hover: false,
-        glowPulse: Math.random() * Math.PI * 2,
-      };
-    });
+      },
+      {
+        // Right planet — no ring, purple
+        nx: 0.78, ny: -0.32,
+        z: 0.22,
+        speed: 0.00006,
+        radius: 72,
+        hasRing: false,
+        color: '#7A00FF',
+        glowPulse: Math.PI,
+        hover: false,
+      },
+    ];
   }
 
   draw() {
@@ -190,11 +200,9 @@ class Space {
 
     for (const p of sorted) {
       p.glowPulse += 0.018;
+      // Planets drift very slowly — just oscillate gently, don't reset
       p.z -= p.speed;
-
-      if (p.z <= 0.04) {
-        p.z = 0.95 + Math.random() * 0.04;
-      }
+      if (p.z <= 0.08) p.z = 0.08;
 
       const { sx, sy, scale } = this._project(p.nx, p.ny, p.z, vx, vy);
       if (sx < -200 || sx > this.W + 200 || sy < -200 || sy > this.H + 200) continue;
@@ -226,17 +234,7 @@ class Space {
         this._drawRing(sx, sy, r, p, pr, pg, pb, alpha);
       }
 
-      // Hover label
-      if (p.hover) {
-        const labelY = sy - r * 1.5 - 10;
-        ctx.font = `bold 14px 'Courier New', monospace`;
-        ctx.textAlign = 'center';
-        ctx.fillStyle = p.color;
-        ctx.shadowColor = p.color;
-        ctx.shadowBlur = 12;
-        ctx.fillText(`[${p.cs.id}] ${p.cs.title}`, sx, labelY);
-        ctx.shadowBlur = 0;
-      }
+      // no hover label — planets are purely decorative
     }
   }
 
