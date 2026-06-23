@@ -2,7 +2,7 @@
    SPACE — one-point perspective ASCII starfield + planets
    ============================================================ */
 
-const STAR_CHARS  = ['.', '·', '+', '*', '✦', '⊹', '°', '✧', '✩', '⋆'];
+const STAR_CHARS  = ['.', '·', '+', '*', '°', 'x', 'o', ',', '-'];
 const PLANET_CHARS = ['○', '◎', '●', '◉', '⊙', '◐', '◑', '◒', '◓'];
 const DISSOLVE_CHARS = ['@', '#', '%', '░', '▒', '▓', '■', '◆', '▲', '∆', '⌬', '⟡'];
 const RING_CHARS  = ['-', '~', '=', '≈', '–', '—'];
@@ -40,7 +40,7 @@ class Space {
 
   _initStars() {
     this.stars = [];
-    const count = Math.floor((this.W * this.H) / 3200);
+    const count = Math.floor((this.W * this.H) / 9000);
     for (let i = 0; i < count; i++) {
       this.stars.push(this._newStar(Math.random())); // random initial depth
     }
@@ -59,7 +59,7 @@ class Space {
       nx: (Math.random() - 0.5) * 2,
       ny: (Math.random() - 0.5) * 2,
       z,                               // depth: 1=far, 0=close/passed
-      baseSpeed: 0.004 + Math.random() * 0.006,
+      baseSpeed: 0.0008 + Math.random() * 0.0012,
       char: STAR_CHARS[Math.floor(Math.random() * STAR_CHARS.length)],
       color,
       twinklePhase: Math.random() * Math.PI * 2,
@@ -118,7 +118,7 @@ class Space {
 
     for (const s of this.stars) {
       s.twinklePhase += 0.025;
-      s.z -= s.baseSpeed * (1 + speed * 18);
+      s.z -= s.baseSpeed * (1 + speed * 8);
 
       // Reset when star passes the viewer
       if (s.z <= 0.01) {
