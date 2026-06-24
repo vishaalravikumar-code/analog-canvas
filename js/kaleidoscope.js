@@ -169,46 +169,51 @@ class Kaleidoscope {
     ctx.fillStyle = '#000000';
     ctx.fill();
 
-    // Glitch timer
-    if (this.glitchCooldown > 0) {
-      this.glitchCooldown--;
-    } else if (this.glitchFrames > 0) {
-      this.glitchFrames--;
-      if (this.glitchFrames === 0) this.glitchCooldown = 80 + Math.random() * 120;
-    } else if (Math.random() < 0.012) {
-      this.glitchFrames  = 6 + Math.floor(Math.random() * 10);
-      this.glitchTamil   = Math.random() < 0.5;
-      this.glitchCooldown = 0;
+    // Per-character Tamil glitch
+    const TAMIL_GLYPHS = 'அஆஇகசடதநபமயரலவழளறன';
+    const nameEN = 'Vishaal Ravikumar';
+
+    if (!this.charGlitch) this.charGlitch = Array(nameEN.length).fill(0);
+    for (let i = 0; i < this.charGlitch.length; i++) {
+      if (this.charGlitch[i] > 0) {
+        this.charGlitch[i]--;
+      } else if (nameEN[i] !== ' ' && Math.random() < 0.004) {
+        this.charGlitch[i] = 3 + Math.floor(Math.random() * 7);
+      }
     }
 
-    const isGlitching = this.glitchFrames > 0;
-    const nameEN = 'Vishaal Ravikumar';
-    const nameTM = 'விஷால் ரவிகுமார்';
-    const displayName = (isGlitching && this.glitchTamil) ? nameTM : nameEN;
-    const nameFont = (isGlitching && this.glitchTamil)
-      ? '300 24px "Noto Sans Tamil"'
-      : '300 24px "Open Sans"';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.font = '300 24px "Open Sans"';
+
+    // Pre-measure English name to find centered start x
+    const totalW = ctx.measureText(nameEN).width;
+    let charX = cx - totalW / 2;
+
+    for (let i = 0; i < nameEN.length; i++) {
+      const ch = nameEN[i];
+      const charW = ctx.measureText(ch).width;
+
+      if (this.charGlitch[i] > 0) {
+        const glyph = TAMIL_GLYPHS[Math.floor(Math.random() * TAMIL_GLYPHS.length)];
+        const ox = 1 + Math.random() * 2;
+        ctx.font = '300 22px "Noto Sans Tamil"';
+        ctx.fillStyle = 'rgba(255,0,119,0.85)';
+        ctx.fillText(glyph, charX - ox, cy);
+        ctx.fillStyle = 'rgba(0,71,255,0.85)';
+        ctx.fillText(glyph, charX + ox, cy);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(glyph, charX, cy);
+        ctx.font = '300 24px "Open Sans"';
+      } else {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(ch, charX, cy);
+      }
+
+      charX += charW;
+    }
 
     ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-
-    if (isGlitching) {
-      // Chromatic aberration: pink left, blue right, white center
-      const ox = 2 + Math.random() * 3;
-      const oy = (Math.random() - 0.5) * 2;
-      ctx.font = nameFont;
-      ctx.fillStyle = 'rgba(255,0,119,0.7)';
-      ctx.fillText(displayName, cx - ox, cy + oy);
-      ctx.fillStyle = 'rgba(0,71,255,0.7)';
-      ctx.fillText(displayName, cx + ox, cy - oy);
-      ctx.fillStyle = '#ffffff';
-      ctx.fillText(displayName, cx, cy);
-    } else {
-      ctx.font = nameFont;
-      ctx.fillStyle = '#ffffff';
-      ctx.fillText(displayName, cx, cy);
-    }
-
     ctx.font = '400 14px "Noto Serif"';
     ctx.fillStyle = 'rgba(255,255,255,0.55)';
     ctx.fillText('Sr. Product Designer', cx, cy + 28);
