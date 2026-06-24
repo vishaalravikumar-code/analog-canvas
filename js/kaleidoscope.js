@@ -129,22 +129,22 @@ class Kaleidoscope {
           if (blob > maxBlob) maxBlob = blob;
         }
 
-        let color;
-        if (maxBlob > 0.28 && maxBlob < 0.33 && Math.random() < 0.6) {
-          // Edge zone — glitch pixel
-          color = Math.random() < 0.5 ? '#FF0077' : '#00AAFF';
-        } else {
-          color = this._color(this._field(nx, ny));
-        }
-
-        ctx.fillStyle = color;
-
         const x1 = col * PIX;
         const y1 = row * PIX;
         const x2 = W - x1 - PIX;
 
-        ctx.fillRect(x1, y1, PIX, PIX); // left
-        ctx.fillRect(x2, y1, PIX, PIX); // right mirror
+        const isEdge = maxBlob > 0.295 && maxBlob < 0.305 && Math.random() < 0.65;
+
+        if (isEdge) {
+          ctx.fillStyle = '#FF0077';
+          ctx.fillRect(x1, y1, PIX, PIX); // left — hot pink
+          ctx.fillStyle = '#0047FF';
+          ctx.fillRect(x2, y1, PIX, PIX); // right — electric blue
+        } else {
+          ctx.fillStyle = this._color(this._field(nx, ny));
+          ctx.fillRect(x1, y1, PIX, PIX);
+          ctx.fillRect(x2, y1, PIX, PIX);
+        }
       }
     }
   }
