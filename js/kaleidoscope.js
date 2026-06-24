@@ -135,5 +135,11 @@ class Kaleidoscope {
         }
       }
     }
+
+    // Black circle at center, drawn on top
+    ctx.beginPath();
+    ctx.arc(W / 2, H / 2, Math.min(W, H) * 0.12, 0, Math.PI * 2);
+    ctx.fillStyle = '#000000';
+    ctx.fill();
   }
 }
