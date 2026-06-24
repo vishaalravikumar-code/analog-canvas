@@ -21,6 +21,9 @@ class Kaleidoscope {
     this.W = this.H = 0;
     this.t     = 0;
     this.trail = [];
+    this.glitchFrames  = 0;
+    this.glitchCooldown = 0;
+    this.glitchTamil   = false;
     this.resize();
   }
 
@@ -166,11 +169,46 @@ class Kaleidoscope {
     ctx.fillStyle = '#000000';
     ctx.fill();
 
+    // Glitch timer
+    if (this.glitchCooldown > 0) {
+      this.glitchCooldown--;
+    } else if (this.glitchFrames > 0) {
+      this.glitchFrames--;
+      if (this.glitchFrames === 0) this.glitchCooldown = 80 + Math.random() * 120;
+    } else if (Math.random() < 0.012) {
+      this.glitchFrames  = 6 + Math.floor(Math.random() * 10);
+      this.glitchTamil   = Math.random() < 0.5;
+      this.glitchCooldown = 0;
+    }
+
+    const isGlitching = this.glitchFrames > 0;
+    const nameEN = 'Vishaal Ravikumar';
+    const nameTM = 'விஷால் ரவிகுமார்';
+    const displayName = (isGlitching && this.glitchTamil) ? nameTM : nameEN;
+    const nameFont = (isGlitching && this.glitchTamil)
+      ? '300 24px "Noto Sans Tamil"'
+      : '300 24px "Open Sans"';
+
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '300 24px "Open Sans"';
-    ctx.fillText('Vishaal Ravikumar', cx, cy);
+
+    if (isGlitching) {
+      // Chromatic aberration: pink left, blue right, white center
+      const ox = 2 + Math.random() * 3;
+      const oy = (Math.random() - 0.5) * 2;
+      ctx.font = nameFont;
+      ctx.fillStyle = 'rgba(255,0,119,0.7)';
+      ctx.fillText(displayName, cx - ox, cy + oy);
+      ctx.fillStyle = 'rgba(0,71,255,0.7)';
+      ctx.fillText(displayName, cx + ox, cy - oy);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(displayName, cx, cy);
+    } else {
+      ctx.font = nameFont;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(displayName, cx, cy);
+    }
+
     ctx.font = '400 14px "Noto Serif"';
     ctx.fillStyle = 'rgba(255,255,255,0.55)';
     ctx.fillText('Sr. Product Designer', cx, cy + 28);
