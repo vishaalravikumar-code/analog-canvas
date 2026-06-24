@@ -16,11 +16,7 @@ function boot() {
 }
 
 function revealUI() {
-  document.querySelectorAll('.corner').forEach(el => el.classList.add('visible'));
-  document.getElementById('hud-top').classList.add('visible');
-  document.getElementById('hud-bottom').classList.add('visible');
-  document.getElementById('info-panel').classList.add('visible');
-  document.getElementById('identity').classList.add('visible');
+  // UI hidden for now
 }
 
 // ── Nav nodes ────────────────────────────────────────────────
