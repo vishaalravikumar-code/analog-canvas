@@ -130,7 +130,7 @@ class Kaleidoscope {
         }
 
         let color;
-        if (maxBlob > 0.22 && maxBlob < 0.34 && Math.random() < 0.45) {
+        if (maxBlob > 0.28 && maxBlob < 0.33 && Math.random() < 0.6) {
           // Edge zone — glitch pixel
           color = Math.random() < 0.5 ? '#FF0077' : '#00AAFF';
         } else {
