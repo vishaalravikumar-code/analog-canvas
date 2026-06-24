@@ -121,7 +121,23 @@ class Kaleidoscope {
         const nx = col / cols; // [0,1] within left half
         const ny = row / rows; // [0,1] full height
 
-        ctx.fillStyle = this._color(this._field(nx, ny));
+        // Blob edge glitch — check each trail point's gaussian influence
+        let maxBlob = 0;
+        for (const p of this.trail) {
+          const ddx = nx - p.nx, ddy = ny - p.ny;
+          const blob = Math.exp(-(ddx * ddx + ddy * ddy) / 0.028) * p.strength;
+          if (blob > maxBlob) maxBlob = blob;
+        }
+
+        let color;
+        if (maxBlob > 0.08 && maxBlob < 0.48 && Math.random() < 0.32) {
+          // Edge zone — glitch pixel
+          color = Math.random() < 0.5 ? '#FF0077' : '#00AAFF';
+        } else {
+          color = this._color(this._field(nx, ny));
+        }
+
+        ctx.fillStyle = color;
 
         const x1 = col * PIX;
         const y1 = row * PIX;
