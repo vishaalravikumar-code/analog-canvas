@@ -144,10 +144,21 @@ class Kaleidoscope {
       }
     }
 
-    // Black circle at center, drawn on top
+    // Black circle at center with name + title
+    const cr = Math.min(W, H) * 0.22;
+    const cx = W / 2, cy = H / 2;
     ctx.beginPath();
-    ctx.arc(W / 2, H / 2, Math.min(W, H) * 0.12, 0, Math.PI * 2);
+    ctx.arc(cx, cy, cr, 0, Math.PI * 2);
     ctx.fillStyle = '#000000';
     ctx.fill();
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '300 18px "Noto Serif"';
+    ctx.fillText('Vishaal Ravikumar', cx, cy - 12);
+    ctx.font = '400 11px "Noto Serif"';
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.fillText('Sr. Product Designer', cx, cy + 12);
   }
 }
