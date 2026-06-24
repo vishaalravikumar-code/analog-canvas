@@ -230,7 +230,7 @@ class Kaleidoscope {
     const chars = Array.from(tagline);
     const charWidths = chars.map(ch => ctx.measureText(ch).width);
     const totalArc = charWidths.reduce((sum, w) => sum + w / textRadius, 0);
-    const repeats = Math.ceil((2 * Math.PI) / totalArc);
+    const repeats = Math.floor((2 * Math.PI) / totalArc);
 
     const spinAngle = this.t * 0.15;
     let angle = spinAngle;
@@ -242,7 +242,6 @@ class Kaleidoscope {
         ctx.translate(cx, cy);
         ctx.rotate(angle + charArc / 2);
         ctx.translate(0, -textRadius);
-        ctx.rotate(Math.PI); // flip so text reads inward
         ctx.fillText(chars[i], 0, 0);
         ctx.restore();
         angle += charArc;
