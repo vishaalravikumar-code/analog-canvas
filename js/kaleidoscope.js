@@ -48,11 +48,11 @@ class Kaleidoscope {
 
   _field(nx, ny) {
     const t  = this.t;
-    const px = nx * 10;
-    const py = ny * 10;
+    const px = nx * 40;
+    const py = ny * 40;
 
     // Center of the field space
-    const cx = 5, cy = 5;
+    const cx = 20, cy = 20;
     const dx = px - cx, dy = py - cy;
     const r  = Math.sqrt(dx * dx + dy * dy);
     const a  = Math.atan2(dy, dx);
