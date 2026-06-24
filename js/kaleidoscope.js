@@ -57,7 +57,7 @@ class Kaleidoscope {
     const r  = Math.sqrt(dx * dx + dy * dy);
     const a  = Math.atan2(dy, dx);
 
-    const v = (
+    let v = (
       // Base waves — varied frequencies
       Math.sin(px * 1.1  + t)          * Math.cos(py * 0.85 + t * 0.7)   +
       Math.sin(px * 0.5  + py * 0.6    + t * 1.15) * 0.9                 +
