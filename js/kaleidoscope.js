@@ -21,9 +21,7 @@ class Kaleidoscope {
     this.ctx    = canvas.getContext('2d');
     this.W = this.H = 0;
     this.t  = 0;
-    this.mx = 0;
-    this.my = 0;
-    this.mouseActive = false;
+    this.trail = []; // [{nx, ny, strength}]
     this.resize();
   }
 
@@ -33,15 +31,22 @@ class Kaleidoscope {
   }
 
   setMouse(x, y) {
-    // Convert screen coords to normalized position within the canvas quadrant [0,1]
     const rect = this.canvas.getBoundingClientRect();
-    // Clamp to canvas bounds
     const cx = Math.max(0, Math.min(rect.width,  x - rect.left))  / rect.width;
     const cy = Math.max(0, Math.min(rect.height, y - rect.top))   / rect.height;
-    // Fold into top-left quadrant (0..0.5 → 0..1)
-    this.mx = Math.abs(cx < 0.5 ? cx : 1 - cx) * 2;
-    this.my = Math.abs(cy < 0.5 ? cy : 1 - cy) * 2;
-    this.mouseActive = true;
+    // Fold into top-left quadrant
+    const nx = Math.abs(cx < 0.5 ? cx : 1 - cx) * 2;
+    const ny = Math.abs(cy < 0.5 ? cy : 1 - cy) * 2;
+
+    // Only add a new trail point if mouse moved enough (avoids pile-up)
+    const last = this.trail[this.trail.length - 1];
+    if (!last || Math.hypot(nx - last.nx, ny - last.ny) > 0.015) {
+      this.trail.push({ nx, ny, strength: 1.0 });
+    }
+  }
+
+  clearTrail() {
+    this.trail = [];
   }
 
   // Combine sine waves to produce a scalar field value at (nx, ny)
@@ -58,14 +63,12 @@ class Kaleidoscope {
       Math.sin(px * 0.25 + py * 0.95 + t * 0.9)  * 0.5
     );
 
-    // Mouse blob: radial disturbance that pushes the field into new color zones
-    if (this.mouseActive) {
-      const dx = nx - this.mx;
-      const dy = ny - this.my;
+    // Trail blobs — each point adds a Gaussian bump
+    for (const p of this.trail) {
+      const dx = nx - p.nx;
+      const dy = ny - p.ny;
       const dist2 = dx * dx + dy * dy;
-      // Gaussian bump — radius ~0.18 in normalized quadrant space
-      const blob = Math.exp(-dist2 / 0.032) * 2.8;
-      v += blob;
+      v += Math.exp(-dist2 / 0.028) * 2.6 * p.strength;
     }
 
     return v;
@@ -92,7 +95,11 @@ class Kaleidoscope {
   }
 
   draw() {
-    this.t += 0.006; // slow, fluid evolution
+    this.t += 0.006;
+
+    // Fade each trail point and remove fully decayed ones
+    for (const p of this.trail) p.strength -= 0.012;
+    this.trail = this.trail.filter(p => p.strength > 0);
 
     const { ctx, W, H } = this;
 

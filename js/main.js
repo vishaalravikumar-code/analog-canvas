@@ -59,7 +59,7 @@ function updateHUD() {
 
 // ── Mouse ────────────────────────────────────────────────────
 document.getElementById('kaleido-canvas').addEventListener('mouseleave', () => {
-  kaleido.mouseActive = false;
+  kaleido.clearTrail();
 });
 
 document.addEventListener('mousemove', e => {
