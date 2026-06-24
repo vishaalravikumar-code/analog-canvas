@@ -79,9 +79,14 @@ window.addEventListener('resize', () => kaleido.resize());
 // ── Render loop ──────────────────────────────────────────────
 function loop() {
   kaleido.draw();
+  synth.syncToKaleidoscope(0.006); // keep tempo locked to animation pace
   updateHUD();
   requestAnimationFrame(loop);
 }
+
+// ── Synth — starts on first click (browser audio policy) ─────
+const synth = new AmbientSynth();
+document.addEventListener('click', () => synth.start(), { once: true });
 
 // ── Init ─────────────────────────────────────────────────────
 kaleido = new Kaleidoscope(document.getElementById('kaleido-canvas'));
