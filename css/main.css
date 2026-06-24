@@ -205,22 +205,6 @@ html, body {
 #tt-tags  { font-size: 11px; letter-spacing: 0.12em; color: #FF0077;       display: block; }
 
 /* ============================================================
-   TAGLINE
-   ============================================================ */
-#tagline {
-  position: fixed;
-  top: calc(50% + 37.5vh + 14px);
-  left: 0; right: 0;
-  text-align: center;
-  font-family: 'Noto Serif', serif;
-  font-size: 13px;
-  font-weight: 400;
-  color: rgba(255,255,255,0.55);
-  letter-spacing: 0.04em;
-  pointer-events: none;
-}
-
-/* ============================================================
    VOLUME BUTTON
    ============================================================ */
 #vol-btn {
