@@ -1,9 +1,8 @@
 /* ============================================================
    NAME EFFECT
-   - Kaleidoscope pattern sampled from the live canvas, clipped
-     inside the letterforms of "Vishaal Ravikumar"
-   - Slow shimmer sweep left→right on loop
-   - Gentle ambient opacity pulse
+   1. Sample the active centre of the kaleido canvas
+   2. Clip it to the letter shapes with destination-in
+   3. Shimmer sweep + ambient opacity pulse
    ============================================================ */
 
 class NameEffect {
@@ -15,7 +14,6 @@ class NameEffect {
     this.tick    = 0;
     this.ready   = false;
 
-    // Wait for Jersey 10 to load before drawing
     document.fonts.ready.then(() => {
       this.ready = true;
       this.resize();
@@ -23,8 +21,8 @@ class NameEffect {
   }
 
   resize() {
-    this.canvas.width  = Math.min(window.innerWidth * 0.85, 900);
-    this.canvas.height = 72;
+    this.canvas.width  = Math.min(window.innerWidth * 0.85, 960);
+    this.canvas.height = 90;
   }
 
   draw() {
@@ -36,45 +34,41 @@ class NameEffect {
 
     ctx.clearRect(0, 0, W, H);
 
-    // ── 1. Draw text as the base mask ────────────────────────
-    ctx.save();
-    ctx.font = '52px "Jersey 10"';
+    // ── 1. Draw kaleido content from the active centre ────────
+    // The centre of the kaleido has the most pattern activity
+    // (radial waves, spirals). Sample a wide centre strip.
+    const kW = kCanvas.width, kH = kCanvas.height;
+    ctx.drawImage(
+      kCanvas,
+      kW * 0.1,  kH * 0.35,   // source x, y  (centre region)
+      kW * 0.8,  kH * 0.30,   // source w, h
+      0, 0, W, H               // dest fills the whole name canvas
+    );
+
+    // ── 2. Clip to letter shapes with destination-in ──────────
+    // destination-in keeps only the pixels where the new draw lands
+    ctx.globalCompositeOperation = 'destination-in';
+    ctx.font = '700 72px "Jersey 10"';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = '#ffffff';
-    ctx.fillText('Vishaal Ravikumar', W / 2, H / 2 + 2);
-    ctx.restore();
-
-    // ── 2. Clip kaleidoscope into the letterforms ─────────────
-    // Sample from the center strip of the kaleido canvas so the
-    // fill is always the live animated pattern.
-    ctx.save();
-    ctx.globalCompositeOperation = 'source-in';
-
-    const kW = kCanvas.width, kH = kCanvas.height;
-    // Source: centre 90% wide, top-third of the kaleido canvas
-    const sx = kW * 0.05, sy = kH * 0.08;
-    const sw = kW * 0.90, sh = kH * 0.28;
-    ctx.drawImage(kCanvas, sx, sy, sw, sh, 0, 0, W, H);
-    ctx.restore();
+    ctx.fillText('Vishaal Ravikumar', W / 2, H / 2 + 4);
+    ctx.globalCompositeOperation = 'source-over';
 
     // ── 3. Shimmer sweep ─────────────────────────────────────
-    const shimSpeed = 1.2;
-    this.shimX = (this.shimX + shimSpeed) % (W + 260);
-    ctx.save();
+    this.shimX = (this.shimX + 1.4) % (W + 280);
     ctx.globalCompositeOperation = 'source-atop';
-    const shimmer = ctx.createLinearGradient(this.shimX - 130, 0, this.shimX + 130, 0);
-    shimmer.addColorStop(0,   'rgba(255,255,255,0)');
-    shimmer.addColorStop(0.4, 'rgba(255,255,255,0.18)');
-    shimmer.addColorStop(0.5, 'rgba(255,255,255,0.38)');
-    shimmer.addColorStop(0.6, 'rgba(255,255,255,0.18)');
-    shimmer.addColorStop(1,   'rgba(255,255,255,0)');
+    const shimmer = ctx.createLinearGradient(this.shimX - 140, 0, this.shimX + 140, 0);
+    shimmer.addColorStop(0,    'rgba(255,255,255,0)');
+    shimmer.addColorStop(0.4,  'rgba(255,255,255,0.15)');
+    shimmer.addColorStop(0.5,  'rgba(255,255,255,0.40)');
+    shimmer.addColorStop(0.6,  'rgba(255,255,255,0.15)');
+    shimmer.addColorStop(1,    'rgba(255,255,255,0)');
     ctx.fillStyle = shimmer;
     ctx.fillRect(0, 0, W, H);
-    ctx.restore();
+    ctx.globalCompositeOperation = 'source-over';
 
-    // ── 4. Ambient pulse — gentle overall brightness breathe ──
-    const pulse = 0.82 + 0.18 * Math.sin(this.tick * 0.018);
-    this.canvas.style.opacity = pulse;
+    // ── 4. Ambient breath ────────────────────────────────────
+    this.canvas.style.opacity = 0.82 + 0.18 * Math.sin(this.tick * 0.018);
   }
 }
