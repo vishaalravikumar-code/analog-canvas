@@ -6,7 +6,7 @@
 const PALETTE = [
   '#050508', // black
   '#0047FF', // electric blue
-  '#FF0077', // hot pink
+  '#0047FF', // electric blue (replacing pink)
   '#CC0000', // red
   '#6B6B00', // olive green
   '#FFE000', // yellow
