@@ -20,9 +20,10 @@ class Kaleidoscope {
     this.canvas = canvas;
     this.ctx    = canvas.getContext('2d');
     this.W = this.H = 0;
-    this.t  = 0;          // global time offset
-    this.mx = 0.5;        // normalized mouse x [0,1]
-    this.my = 0.5;        // normalized mouse y [0,1]
+    this.t  = 0;
+    this.mx = 0;
+    this.my = 0;
+    this.mouseActive = false;
     this.resize();
   }
 
@@ -32,28 +33,42 @@ class Kaleidoscope {
   }
 
   setMouse(x, y) {
-    // Normalize relative to canvas center (which sits at viewport center)
-    const cx = window.innerWidth  / 2;
-    const cy = window.innerHeight / 2;
-    this.mx = 0.5 + (x - cx) / (this.W);
-    this.my = 0.5 + (y - cy) / (this.H);
+    // Convert screen coords to normalized position within the canvas quadrant [0,1]
+    const rect = this.canvas.getBoundingClientRect();
+    // Clamp to canvas bounds
+    const cx = Math.max(0, Math.min(rect.width,  x - rect.left))  / rect.width;
+    const cy = Math.max(0, Math.min(rect.height, y - rect.top))   / rect.height;
+    // Fold into top-left quadrant (0..0.5 → 0..1)
+    this.mx = Math.abs(cx < 0.5 ? cx : 1 - cx) * 2;
+    this.my = Math.abs(cy < 0.5 ? cy : 1 - cy) * 2;
+    this.mouseActive = true;
   }
 
   // Combine sine waves to produce a scalar field value at (nx, ny)
-  // nx, ny are normalized [0,1] coords within one quadrant
+  // nx, ny are normalized [0,1] coords within the top-left quadrant
   _field(nx, ny) {
     const t = this.t;
-    // Mouse subtly shifts the phase center — gives interactivity without chaos
-    const px = nx * 9 + (this.mx - 0.5) * 1.4;
-    const py = ny * 9 + (this.my - 0.5) * 1.4;
+    const px = nx * 9;
+    const py = ny * 9;
 
-    return (
+    let v = (
       Math.sin(px * 1.1 + t)         * Math.cos(py * 0.85 + t * 0.7)  +
       Math.sin(px * 0.5 + py * 0.6   + t * 1.15) * 0.9                +
       Math.cos(px * 0.75 - py * 0.4  + t * 0.55) * 0.7                +
       Math.sin(px * 0.25 + py * 0.95 + t * 0.9)  * 0.5
     );
-    // total range ≈ -3.1 to +3.1
+
+    // Mouse blob: radial disturbance that pushes the field into new color zones
+    if (this.mouseActive) {
+      const dx = nx - this.mx;
+      const dy = ny - this.my;
+      const dist2 = dx * dx + dy * dy;
+      // Gaussian bump — radius ~0.18 in normalized quadrant space
+      const blob = Math.exp(-dist2 / 0.032) * 2.8;
+      v += blob;
+    }
+
+    return v;
   }
 
   // Map field value → palette color
