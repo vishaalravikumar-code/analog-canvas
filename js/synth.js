@@ -38,11 +38,12 @@ class AmbientSynth {
     this.dry         = null;
     this.wet         = null;
     this.master      = null;
-    this.initialized = false;
-    this.timers      = [];
-
-    // Kaleidoscope t drives tempo scaling — 1.0 = nominal, higher = faster notes
-    this.tempoScale  = 1.0;
+    this.initialized   = false;
+    this.muted         = false;
+    this.timers        = [];
+    this.tempoScale    = 1.0;
+    this.mouseInfluence = 0;   // 0–1, smoothed mouse speed
+    this.masterFilter  = null;
   }
 
   async start() {
@@ -56,10 +57,29 @@ class AmbientSynth {
     this._startVoices();
   }
 
-  // Called each frame with the kaleidoscope's t increment
-  syncToKaleidoscope(tIncrement) {
-    // Nominal tIncrement is 0.006. Scale note intervals inversely.
-    this.tempoScale = tIncrement / 0.006;
+  // Called each frame with smoothed mouse speed (px/frame)
+  setMouseVelocity(speed) {
+    if (!this.initialized) return;
+    // Smooth incoming speed, cap influence at 1
+    this.mouseInfluence += (Math.min(1, speed / 30) - this.mouseInfluence) * 0.08;
+
+    // Tempo: 1x at rest → 1.5x max. Never faster than 1.5x.
+    this.tempoScale = 1 + this.mouseInfluence * 0.5;
+
+    // Filter opens slightly with movement — warmer at rest, slightly brighter when active
+    if (this.masterFilter) {
+      const cutoff = 900 + this.mouseInfluence * 600; // 900 → 1500 Hz
+      this.masterFilter.frequency.setTargetAtTime(cutoff, this.ac.currentTime, 0.4);
+    }
+  }
+
+  toggleMute() {
+    if (!this.initialized || !this.master) return;
+    this.muted = !this.muted;
+    const now = this.ac.currentTime;
+    this.master.gain.cancelScheduledValues(now);
+    this.master.gain.setTargetAtTime(this.muted ? 0 : 0.72, now, 0.3);
+    return this.muted;
   }
 
   _buildGraph() {
@@ -70,17 +90,24 @@ class AmbientSynth {
     this.master.gain.value = 0.72;
     this.master.connect(ac.destination);
 
-    // Dry path
+    // Master filter — modulated by mouse velocity
+    this.masterFilter = ac.createBiquadFilter();
+    this.masterFilter.type = 'lowpass';
+    this.masterFilter.frequency.value = 900;
+    this.masterFilter.Q.value = 0.5;
+    this.masterFilter.connect(this.master);
+
+    // Dry path → master filter
     this.dry = ac.createGain();
     this.dry.gain.value = 0.28;
-    this.dry.connect(this.master);
+    this.dry.connect(this.masterFilter);
 
-    // Reverb + wet path
+    // Reverb + wet path → master filter
     this.reverb = this._makeReverb(7, 3.2);
     this.wet = ac.createGain();
     this.wet.gain.value = 0.72;
     this.reverb.connect(this.wet);
-    this.wet.connect(this.master);
+    this.wet.connect(this.masterFilter);
   }
 
   // Synthesise a hall reverb impulse response programmatically

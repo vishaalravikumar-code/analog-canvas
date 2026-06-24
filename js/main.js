@@ -4,7 +4,9 @@
 
 let mx = window.innerWidth  / 2;
 let my = window.innerHeight / 2;
-let kaleido;
+let prevMx = mx, prevMy = my;
+let mouseSpeed = 0;
+let kaleido, synth;
 
 // ── Boot ─────────────────────────────────────────────────────
 function boot() {
@@ -16,7 +18,15 @@ function boot() {
 }
 
 function revealUI() {
-  // UI hidden for now
+  // UI chrome hidden until needed — volume button always visible
+  document.getElementById('vol-btn').classList.add('visible');
+}
+
+// ── Volume button ─────────────────────────────────────────────
+function toggleVolume() {
+  const muted = synth.toggleMute();
+  document.getElementById('vol-on').style.display  = muted ? 'none'  : 'block';
+  document.getElementById('vol-off').style.display = muted ? 'block' : 'none';
 }
 
 // ── Nav nodes ────────────────────────────────────────────────
@@ -58,14 +68,17 @@ function updateHUD() {
 }
 
 // ── Mouse ────────────────────────────────────────────────────
-document.getElementById('kaleido-canvas').addEventListener('mouseleave', () => {
-  kaleido.clearTrail();
-});
-
 document.addEventListener('mousemove', e => {
   mx = e.clientX;
   my = e.clientY;
+
+  // Smoothed speed in px/frame (approx)
+  const rawSpeed = Math.hypot(mx - prevMx, my - prevMy);
+  mouseSpeed = mouseSpeed * 0.75 + rawSpeed * 0.25;
+  prevMx = mx; prevMy = my;
+
   kaleido.setMouse(mx, my);
+  synth.setMouseVelocity(mouseSpeed);
 
   const tt = document.getElementById('tooltip');
   if (tt.classList.contains('show')) {
@@ -74,18 +87,24 @@ document.addEventListener('mousemove', e => {
   }
 });
 
+document.getElementById('kaleido-canvas') &&
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('kaleido-canvas').addEventListener('mouseleave', () => {
+      kaleido.clearTrail();
+    });
+  });
+
 window.addEventListener('resize', () => kaleido.resize());
 
 // ── Render loop ──────────────────────────────────────────────
 function loop() {
   kaleido.draw();
-  synth.syncToKaleidoscope(0.006); // keep tempo locked to animation pace
   updateHUD();
   requestAnimationFrame(loop);
 }
 
-// ── Synth — starts on first click (browser audio policy) ─────
-const synth = new AmbientSynth();
+// ── Synth — starts on first click ────────────────────────────
+synth = new AmbientSynth();
 document.addEventListener('click', () => synth.start(), { once: true });
 
 // ── Init ─────────────────────────────────────────────────────
