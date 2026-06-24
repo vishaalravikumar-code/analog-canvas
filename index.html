@@ -15,9 +15,6 @@
     <div id="boot-sub">SR. PRODUCT DESIGNER // VISHAAL RAVIKUMAR</div>
   </div>
 
-  <!-- CRT scanline overlay -->
-  <div id="crt"></div>
-
   <!-- Corner chrome -->
   <div class="corner corner-tl"></div>
   <div class="corner corner-tr"></div>
@@ -30,8 +27,8 @@
       <span class="hud-label">SYS</span>
       <span class="hud-val">ONLINE</span>
       <span class="hud-sep">|</span>
-      <span class="hud-label">VELOCITY</span>
-      <span class="hud-val" id="hud-velocity">0.00</span>
+      <span class="hud-label">NODE</span>
+      <span class="hud-val">PORTFOLIO.V1</span>
     </div>
     <div class="hud-right">
       <span class="hud-label">COORDS</span>
@@ -43,14 +40,14 @@
 
   <!-- Bottom HUD -->
   <footer id="hud-bottom">
-    <span class="hud-label" id="hud-hint">MOVE TOWARD CENTER TO WARP</span>
-    <span class="hud-val" id="hud-mode">DEEP SPACE</span>
+    <span class="hud-label" id="hud-hint">MOVE CURSOR TO INTERACT</span>
+    <span class="hud-val" id="hud-mode">KALEIDOSCOPE</span>
   </footer>
 
-  <!-- Full-screen space canvas -->
-  <canvas id="space-canvas"></canvas>
+  <!-- Full-screen pixel art canvas -->
+  <canvas id="kaleido-canvas"></canvas>
 
-  <!-- Identity + nav overlay (center of screen) -->
+  <!-- Identity + nav overlay -->
   <main id="stage">
     <div id="center-ui">
       <div id="identity">
@@ -78,7 +75,7 @@
   </div>
 
   <script src="js/data.js"></script>
-  <script src="js/space.js"></script>
+  <script src="js/kaleidoscope.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

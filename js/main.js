@@ -4,7 +4,7 @@
 
 let mx = window.innerWidth  / 2;
 let my = window.innerHeight / 2;
-let space;
+let kaleido;
 
 // ── Boot ─────────────────────────────────────────────────────
 function boot() {
@@ -29,7 +29,7 @@ function buildNav() {
   nav.innerHTML = CASE_STUDIES.map((cs, i) => `
     <a class="cs-node" href="${cs.href}"
        onmouseenter="onNodeEnter(${i}, event)"
-       onmouseleave="onNodeLeave(${i})">
+       onmouseleave="onNodeLeave()">
       <span class="cs-id">[${cs.id}]</span>
       <span class="cs-title">${cs.title}</span>
       <span class="cs-tag">${cs.tags.split('//')[0].trim()}</span>
@@ -56,31 +56,17 @@ function onNodeLeave() {
 
 // ── HUD ──────────────────────────────────────────────────────
 function updateHUD() {
-  const warp = space.warpFactor;
-
-  document.getElementById('hud-time').textContent     = new Date().toTimeString().slice(0, 8);
-  document.getElementById('hud-cursor').textContent   =
+  document.getElementById('hud-time').textContent   = new Date().toTimeString().slice(0, 8);
+  document.getElementById('hud-cursor').textContent =
     `${String(Math.round(mx)).padStart(4,'0')}, ${String(Math.round(my)).padStart(4,'0')}`;
-  document.getElementById('hud-velocity').textContent = (warp * 9.99).toFixed(2);
-  document.getElementById('hud-mode').textContent     = warp > 0.5 ? 'WARP SPEED' : 'DEEP SPACE';
-  document.getElementById('hud-hint').textContent     = warp > 0.5 ? 'HOVER PLANETS TO EXPLORE' : 'MOVE TOWARD CENTER TO WARP';
 }
 
 // ── Mouse ────────────────────────────────────────────────────
 document.addEventListener('mousemove', e => {
   mx = e.clientX;
   my = e.clientY;
-  space.setMouse(mx, my);
+  kaleido.setMouse(mx, my);
 
-  // Show case nav when warping
-  const nav = document.getElementById('case-nav');
-  if (space.warpFactor > 0.42) {
-    nav.classList.add('visible');
-  } else {
-    nav.classList.remove('visible');
-  }
-
-  // Follow tooltip
   const tt = document.getElementById('tooltip');
   if (tt.classList.contains('show')) {
     tt.style.left = (mx + 18) + 'px';
@@ -88,19 +74,18 @@ document.addEventListener('mousemove', e => {
   }
 });
 
-// ── Resize ───────────────────────────────────────────────────
-window.addEventListener('resize', () => space.resize());
+window.addEventListener('resize', () => kaleido.resize());
 
 // ── Render loop ──────────────────────────────────────────────
 function loop() {
-  space.draw();
+  kaleido.draw();
   updateHUD();
   requestAnimationFrame(loop);
 }
 
 // ── Init ─────────────────────────────────────────────────────
-space = new Space(document.getElementById('space-canvas'));
-space.setMouse(mx, my);
+kaleido = new Kaleidoscope(document.getElementById('kaleido-canvas'));
+kaleido.setMouse(mx, my);
 buildNav();
 boot();
 loop();

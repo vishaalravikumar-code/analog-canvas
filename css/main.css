@@ -4,12 +4,11 @@
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
 :root {
-  --bg:      #080812;
-  --cyan:    #00F7FF;
-  --magenta: #FF00AA;
-  --purple:  #7A00FF;
-  --white:   #D6D6FF;
-  --cyan-40: rgba(0,247,255,0.40);
+  --bg:      #050508;
+  --cyan:    #0047FF;
+  --magenta: #FF0077;
+  --white:   #F0F0F0;
+  --white-40: rgba(240,240,240,0.4);
 }
 
 html, body {
@@ -22,18 +21,6 @@ html, body {
 }
 
 /* ============================================================
-   CRT SCANLINES
-   ============================================================ */
-#crt {
-  position: fixed; inset: 0; z-index: 900; pointer-events: none;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent 0px, transparent 2px,
-    rgba(0,0,0,0.06) 2px, rgba(0,0,0,0.06) 4px
-  );
-}
-
-/* ============================================================
    CORNER CHROME
    ============================================================ */
 .corner {
@@ -41,11 +28,11 @@ html, body {
   z-index: 50; pointer-events: none;
   opacity: 0; transition: opacity 1s;
 }
-.corner.visible { opacity: 0.55; }
-.corner-tl { top: 20px;    left: 20px;  border-top: 1px solid var(--cyan); border-left:  1px solid var(--cyan); }
-.corner-tr { top: 20px;    right: 20px; border-top: 1px solid var(--cyan); border-right: 1px solid var(--cyan); }
-.corner-bl { bottom: 20px; left: 20px;  border-bottom: 1px solid var(--cyan); border-left:  1px solid var(--cyan); }
-.corner-br { bottom: 20px; right: 20px; border-bottom: 1px solid var(--cyan); border-right: 1px solid var(--cyan); }
+.corner.visible { opacity: 0.7; }
+.corner-tl { top: 20px;    left: 20px;  border-top: 1px solid var(--white); border-left:  1px solid var(--white); }
+.corner-tr { top: 20px;    right: 20px; border-top: 1px solid var(--white); border-right: 1px solid var(--white); }
+.corner-bl { bottom: 20px; left: 20px;  border-bottom: 1px solid var(--white); border-left:  1px solid var(--white); }
+.corner-br { bottom: 20px; right: 20px; border-bottom: 1px solid var(--white); border-right: 1px solid var(--white); }
 
 /* ============================================================
    HUD BARS
@@ -54,32 +41,33 @@ html, body {
   position: fixed; left: 0; right: 0; z-index: 80;
   display: flex; align-items: center; justify-content: space-between;
   padding: 0 28px; height: 42px;
-  background: rgba(8,8,18,0.85);
+  background: rgba(5,5,8,0.82);
+  border-color: rgba(240,240,240,0.12);
   opacity: 0; transition: opacity 1s;
 }
-#hud-top    { top: 0;    border-bottom: 1px solid rgba(0,247,255,0.12); }
-#hud-bottom { bottom: 0; border-top:    1px solid rgba(0,247,255,0.12); }
+#hud-top    { top: 0;    border-bottom: 1px solid rgba(240,240,240,0.12); }
+#hud-bottom { bottom: 0; border-top:    1px solid rgba(240,240,240,0.12); }
 #hud-top.visible, #hud-bottom.visible { opacity: 1; }
 
 .hud-left, .hud-right { display: flex; align-items: center; gap: 14px; }
-.hud-label { font-size: 13px; letter-spacing: 0.12em; color: rgba(0,247,255,0.45); text-transform: uppercase; white-space: nowrap; }
-.hud-val   { font-size: 13px; letter-spacing: 0.08em; color: var(--cyan); white-space: nowrap; }
-.hud-sep   { color: rgba(0,247,255,0.2); }
+.hud-label { font-size: 13px; letter-spacing: 0.12em; color: rgba(240,240,240,0.4); text-transform: uppercase; white-space: nowrap; }
+.hud-val   { font-size: 13px; letter-spacing: 0.08em; color: var(--white); white-space: nowrap; }
+.hud-sep   { color: rgba(240,240,240,0.2); }
 
 /* ============================================================
-   SPACE CANVAS
+   CANVAS
    ============================================================ */
-#space-canvas { position: fixed; inset: 0; z-index: 0; }
+#kaleido-canvas { position: fixed; inset: 0; z-index: 0; }
 
 /* ============================================================
-   STAGE — identity + nav centered on screen
+   STAGE
    ============================================================ */
 #stage {
   position: fixed;
   top: 42px; bottom: 42px; left: 0; right: 0;
   z-index: 10;
   display: flex; align-items: center; justify-content: center;
-  pointer-events: none; /* let mouse events pass to canvas */
+  pointer-events: none;
 }
 
 #center-ui {
@@ -94,26 +82,27 @@ html, body {
   text-align: center;
   opacity: 0; transition: opacity 0.8s;
   pointer-events: none;
+  /* Dark pill behind text so it reads over any palette color */
+  background: rgba(5,5,8,0.72);
+  padding: 20px 36px;
+  border: 1px solid rgba(240,240,240,0.1);
 }
 #identity.visible { opacity: 1; }
-
 #identity h1 {
   font-size: 24px; letter-spacing: 0.4em;
-  color: var(--white); text-transform: uppercase;
-  margin-bottom: 10px;
-  text-shadow: 0 0 30px rgba(0,247,255,0.2);
+  color: var(--white); text-transform: uppercase; margin-bottom: 10px;
 }
 #identity p {
   font-size: 16px; letter-spacing: 0.25em;
-  color: var(--cyan-40); text-transform: uppercase;
+  color: var(--white-40); text-transform: uppercase;
 }
 
 /* ============================================================
    CASE STUDY NAV
    ============================================================ */
 #case-nav {
-  display: flex; gap: 16px; flex-wrap: wrap; justify-content: center;
-  max-width: 640px;
+  display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;
+  max-width: 680px;
   opacity: 0; transition: opacity 0.5s;
   pointer-events: none;
 }
@@ -126,19 +115,19 @@ html, body {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 6px; padding: 12px 16px; min-height: 44px;
   text-decoration: none; color: inherit; cursor: pointer;
-  transition: transform 0.2s;
-  background: rgba(8,8,18,0.6);
-  border: 1px solid rgba(0,247,255,0.1);
+  background: rgba(5,5,8,0.82);
+  border: 1px solid rgba(240,240,240,0.15);
+  transition: border-color 0.2s, transform 0.2s;
 }
-.cs-node:hover { transform: translateY(-4px); border-color: rgba(255,0,170,0.4); }
-.cs-node:hover .cs-id    { color: var(--magenta); text-shadow: 0 0 12px var(--magenta); }
-.cs-node:hover .cs-title { color: var(--magenta); }
-.cs-node:hover .cs-tag   { border-color: var(--magenta); color: var(--magenta); }
+.cs-node:hover {
+  transform: translateY(-3px);
+  border-color: rgba(240,240,240,0.6);
+}
 
-.cs-id    { font-size: 16px; letter-spacing: 0.2em;  color: var(--cyan); text-shadow: 0 0 6px var(--cyan); transition: all 0.2s; }
-.cs-title { font-size: 14px; letter-spacing: 0.15em; color: var(--white); text-transform: uppercase; transition: all 0.2s; }
-.cs-tag   { font-size: 12px; letter-spacing: 0.08em; color: rgba(122,0,255,0.85);
-            border: 1px solid rgba(122,0,255,0.3); padding: 4px 12px; transition: all 0.2s; }
+.cs-id    { font-size: 16px; letter-spacing: 0.2em;  color: var(--white);     transition: color 0.2s; }
+.cs-title { font-size: 14px; letter-spacing: 0.15em; color: var(--white-40);  text-transform: uppercase; }
+.cs-tag   { font-size: 12px; letter-spacing: 0.08em; color: rgba(240,240,240,0.3);
+            border: 1px solid rgba(240,240,240,0.15); padding: 4px 12px; }
 
 /* ============================================================
    INFO PANEL
@@ -147,31 +136,35 @@ html, body {
   position: fixed; right: 28px; top: 50%; transform: translateY(-50%);
   z-index: 50; width: 180px;
   opacity: 0; transition: opacity 1s;
+  background: rgba(5,5,8,0.75);
+  padding: 8px 14px;
+  border: 1px solid rgba(240,240,240,0.1);
 }
 #info-panel.visible { opacity: 1; }
 
 .info-row {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 7px 0; border-bottom: 1px solid rgba(0,247,255,0.07);
+  padding: 7px 0; border-bottom: 1px solid rgba(240,240,240,0.07);
 }
-.info-key { font-size: 13px; letter-spacing: 0.1em;  color: rgba(0,247,255,0.35); text-transform: uppercase; }
+.info-row:last-child { border-bottom: none; }
+.info-key { font-size: 13px; letter-spacing: 0.1em;  color: rgba(240,240,240,0.35); text-transform: uppercase; }
 .info-val { font-size: 13px; letter-spacing: 0.05em; color: var(--white); }
-.info-val.cyan { color: var(--cyan); }
+.info-val.cyan { color: #FFE000; }
 
 /* ============================================================
    TOOLTIP
    ============================================================ */
 #tooltip {
   position: fixed; z-index: 200; pointer-events: none;
-  background: rgba(8,8,18,0.96);
-  border: 1px solid rgba(0,247,255,0.25);
+  background: rgba(5,5,8,0.96);
+  border: 1px solid rgba(240,240,240,0.2);
   padding: 14px 18px; max-width: 260px;
   opacity: 0; transition: opacity 0.15s;
 }
 #tooltip.show { opacity: 1; }
-#tt-id    { font-size: 12px; letter-spacing: 0.3em;  color: var(--cyan);    margin-bottom: 6px; }
-#tt-title { font-size: 12px; letter-spacing: 0.04em; color: var(--white);   line-height: 1.6; margin-bottom: 10px; }
-#tt-tags  { font-size: 11px; letter-spacing: 0.12em; color: var(--magenta); display: block; }
+#tt-id    { font-size: 12px; letter-spacing: 0.3em;  color: #FFE000;       margin-bottom: 6px; }
+#tt-title { font-size: 12px; letter-spacing: 0.04em; color: var(--white);  line-height: 1.6; margin-bottom: 10px; }
+#tt-tags  { font-size: 11px; letter-spacing: 0.12em; color: #FF0077;       display: block; }
 
 /* ============================================================
    BOOT SCREEN
@@ -180,25 +173,22 @@ html, body {
   position: fixed; inset: 0; z-index: 999;
   background: var(--bg);
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 16px;
-  transition: opacity 0.8s;
+  gap: 16px; transition: opacity 0.8s;
 }
 #boot.hidden { opacity: 0; pointer-events: none; }
-
 #boot-text {
   font-size: 13px; letter-spacing: 0.4em;
-  color: rgba(0,247,255,0.55); text-transform: uppercase;
+  color: rgba(240,240,240,0.5); text-transform: uppercase;
 }
 #boot-bar {
   width: 200px; height: 1px;
-  background: rgba(0,247,255,0.1); overflow: hidden;
+  background: rgba(240,240,240,0.1); overflow: hidden;
 }
 #boot-progress {
-  height: 100%; width: 0; background: var(--cyan);
-  box-shadow: 0 0 8px var(--cyan);
+  height: 100%; width: 0; background: var(--white);
   transition: width 1.6s linear;
 }
 #boot-sub {
   font-size: 11px; letter-spacing: 0.3em;
-  color: rgba(122,0,255,0.5); text-transform: uppercase;
+  color: rgba(240,240,240,0.3); text-transform: uppercase;
 }
