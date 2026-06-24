@@ -27,13 +27,16 @@ class Kaleidoscope {
   }
 
   resize() {
-    this.W = this.canvas.width  = window.innerWidth;
-    this.H = this.canvas.height = window.innerHeight;
+    this.W = this.canvas.width  = Math.round(window.innerWidth  * 0.75);
+    this.H = this.canvas.height = Math.round(window.innerHeight * 0.75);
   }
 
   setMouse(x, y) {
-    this.mx = x / this.W;
-    this.my = y / this.H;
+    // Normalize relative to canvas center (which sits at viewport center)
+    const cx = window.innerWidth  / 2;
+    const cy = window.innerHeight / 2;
+    this.mx = 0.5 + (x - cx) / (this.W);
+    this.my = 0.5 + (y - cy) / (this.H);
   }
 
   // Combine sine waves to produce a scalar field value at (nx, ny)
