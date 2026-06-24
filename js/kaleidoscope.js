@@ -186,8 +186,9 @@ class Kaleidoscope {
     ctx.textBaseline = 'middle';
     ctx.font = '300 24px "Open Sans"';
 
-    // Pre-measure English name to find centered start x
-    const totalW = ctx.measureText(nameEN).width;
+    // Pre-measure English name to find centered start x (include extra spacing)
+    const TRACKING = 2;
+    const totalW = ctx.measureText(nameEN).width + TRACKING * (nameEN.length - 1);
     let charX = cx - totalW / 2;
 
     for (let i = 0; i < nameEN.length; i++) {
