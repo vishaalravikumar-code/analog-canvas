@@ -65,10 +65,10 @@ class Kaleidoscope {
       Math.sin(px * 0.25 + py * 0.95   + t * 0.9)  * 0.5                 +
       // Cross-product term — creates sharp diagonal tendrils
       Math.sin(px * py * 0.08          + t * 0.6)  * 0.6                 +
-      // Radial waves — concentric rings spreading from center
-      Math.sin(r  * 1.1                + t * 0.8)  * 0.7                 +
-      // Spiral arms — rotational asymmetry within each half
-      Math.sin(a  * 3   + r * 0.6      + t * 0.5)  * 0.5                 +
+      // Radial waves — concentric rings expanding outward from center
+      Math.sin(r  * 1.1  - t * 3.5)               * 0.7                 +
+      // Spiral arms — rotate outward over time
+      Math.sin(a  * 3   + r * 0.6      - t * 2.0)  * 0.5                 +
       // Fine detail layer — small, fast shapes
       Math.cos(px * 2.2 + py * 1.8     + t * 1.3)  * 0.35
     );
