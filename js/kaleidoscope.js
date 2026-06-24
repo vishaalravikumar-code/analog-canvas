@@ -219,13 +219,13 @@ class Kaleidoscope {
     ctx.fillStyle = 'rgba(255,255,255,0.55)';
     ctx.fillText('Sr. Product Designer', cx, cy + 28);
 
-    // Spinning tagline around the circle
+    // Spinning tagline inside the circle
     const tagline = 'Entropy is inevitable. Design is intentional.   ·   ';
-    const textRadius = cr + 20;
-    ctx.font = '400 11px "Noto Serif"';
+    const textRadius = cr - 16;
+    ctx.font = '400 10px "Noto Serif"';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
 
     const chars = Array.from(tagline);
     const charWidths = chars.map(ch => ctx.measureText(ch).width);
@@ -242,6 +242,7 @@ class Kaleidoscope {
         ctx.translate(cx, cy);
         ctx.rotate(angle + charArc / 2);
         ctx.translate(0, -textRadius);
+        ctx.rotate(Math.PI); // flip so text reads inward
         ctx.fillText(chars[i], 0, 0);
         ctx.restore();
         angle += charArc;
