@@ -23,13 +23,12 @@ const SCALE = [
   739.99, // F#5
 ];
 
-// Four voices, each with its own loop interval (seconds), note pool,
-// and note duration. Irrational intervals ensure they drift apart over time.
+// Four voices — all kept in the lower two octaves (D3–B4), nothing above D5.
 const VOICE_DEFS = [
-  { interval: 11.3, pool: [3, 5, 7, 9],  dur: 7.5, peak: 0.16 }, // mid register
-  { interval: 17.8, pool: [0, 2, 5, 10], dur: 9.0, peak: 0.13 }, // low + high
-  { interval: 13.7, pool: [4, 6, 8, 11], dur: 6.5, peak: 0.14 }, // upper mid
-  { interval: 22.4, pool: [1, 5, 9, 12], dur: 8.5, peak: 0.11 }, // sparse highs
+  { interval: 11.3, pool: [0, 3, 5, 7],  dur: 7.5, peak: 0.16 }, // low-mid
+  { interval: 17.8, pool: [0, 2, 3, 5],  dur: 9.0, peak: 0.14 }, // low
+  { interval: 13.7, pool: [3, 5, 7, 9],  dur: 6.5, peak: 0.13 }, // mid
+  { interval: 22.4, pool: [1, 4, 6, 8],  dur: 8.5, peak: 0.12 }, // mid-high (capped at B4)
 ];
 
 class AmbientSynth {
@@ -151,7 +150,7 @@ class AmbientSynth {
     // Warm low-pass filter — removes harsh upper partials
     const filter = ac.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.frequency.value = 1600;
+    filter.frequency.value = 900;
     filter.Q.value = 0.6;
 
     osc1.connect(filter);
