@@ -4,12 +4,12 @@
    ============================================================ */
 
 const PALETTE = [
+  '#FFFFFF', // white (was black)
+  '#000000', // black (was white)
+  '#000000', // black
   '#000000', // black
   '#FFFFFF', // white
-  '#FFFFFF', // white
-  '#FFFFFF', // white
   '#000000', // black
-  '#FFFFFF', // white
 ];
 
 const PIX = 5;
