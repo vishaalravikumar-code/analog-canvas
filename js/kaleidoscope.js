@@ -119,7 +119,15 @@ class Kaleidoscope {
         const x2 = W - x1 - PIX;
 
         const colorFull = this._color(this._field(nx, ny));
+        let maxBlob = 0;
+        for (const p of this.trail) {
+          const ddx = nx - p.nx, ddy = ny - p.ny;
+          const b = Math.exp(-(ddx * ddx + ddy * ddy) / 0.028) * p.strength;
+          if (b > maxBlob) maxBlob = b;
+        }
+        // Outer edge only: color changed by blob, but gaussian influence is still low
         const isEdge = this.trail.length > 0 &&
+                       maxBlob < 0.45 &&
                        colorFull !== this._color(this._baseField(nx, ny)) &&
                        Math.random() < 0.7;
 
