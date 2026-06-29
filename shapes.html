@@ -427,14 +427,22 @@
       tick();
     }
 
-    // Click-to-start overlay
+    // Click/tap-to-start overlay
     const overlay = document.createElement('div');
     overlay.style.cssText = `position:fixed;inset:0;display:flex;align-items:center;
       justify-content:center;color:rgba(255,255,255,0.5);font-family:monospace;
       font-size:11px;letter-spacing:0.25em;cursor:pointer;z-index:10;`;
-    overlay.textContent = 'CLICK TO START';
+    overlay.textContent = 'TAP TO START';
     document.body.appendChild(overlay);
-    overlay.addEventListener('click', () => { initAudio(); overlay.remove(); }, { once: true });
+
+    function startAudio() {
+      initAudio();
+      // iOS Safari suspends AudioContext even after creation — must resume inside gesture
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      overlay.remove();
+    }
+    overlay.addEventListener('click',      startAudio, { once: true });
+    overlay.addEventListener('touchend',   startAudio, { once: true });
   </script>
 </body>
 </html>
