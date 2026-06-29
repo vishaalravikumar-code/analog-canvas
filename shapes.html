@@ -239,7 +239,10 @@
       ctx.fillStyle = '#000'; ctx.fillRect(0,0,W,H);
       ctx.drawImage(fb,0,0);
 
-      // Shapes hidden
+      // Draw shape directly on main canvas so it's always visible
+      ctx.globalCompositeOperation = 'screen';
+      renderOutline(ctx, SHAPES[shapeIdx], col, 3);
+      ctx.globalCompositeOperation = 'source-over';
 
       // Scanlines
       for (let y = 0; y < H; y += 2) { ctx.fillStyle='rgba(0,0,0,0.82)'; ctx.fillRect(0,y,W,1); }
