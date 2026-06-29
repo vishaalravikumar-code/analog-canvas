@@ -406,7 +406,19 @@
       setTimeout(tick, 20);
     }
 
-    function initAudio() {
+    // Click/tap-to-start overlay
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `position:fixed;inset:0;display:flex;align-items:center;
+      justify-content:center;color:rgba(255,255,255,0.5);font-family:monospace;
+      font-size:11px;letter-spacing:0.25em;cursor:pointer;z-index:10;`;
+    overlay.textContent = 'TAP TO START';
+    document.body.appendChild(overlay);
+
+    function startAudio(e) {
+      e.preventDefault();
+      overlay.remove();
+
+      // Create context and all nodes inside the gesture handler
       audioCtx   = new (window.AudioContext || window.webkitAudioContext)();
       masterGain = audioCtx.createGain();
       masterGain.gain.value = 0.72;
@@ -418,35 +430,22 @@
       const rev = buildReverb();
       const dry = audioCtx.createGain(); dry.gain.value = 0.48;
       const wet = audioCtx.createGain(); wet.gain.value = 0.52;
-
       masterGain.connect(comp);
       comp.connect(dry); dry.connect(audioCtx.destination);
       comp.connect(rev); rev.connect(wet); wet.connect(audioCtx.destination);
 
-      seqNext = audioCtx.currentTime + 0.2;
-      tick();
-    }
+      // Play a silent buffer synchronously to unlock iOS audio engine
+      const silentBuf = audioCtx.createBuffer(1, 1, audioCtx.sampleRate);
+      const silentSrc = audioCtx.createBufferSource();
+      silentSrc.buffer = silentBuf;
+      silentSrc.connect(audioCtx.destination);
+      silentSrc.start(0);
 
-    // Click/tap-to-start overlay
-    const overlay = document.createElement('div');
-    overlay.style.cssText = `position:fixed;inset:0;display:flex;align-items:center;
-      justify-content:center;color:rgba(255,255,255,0.5);font-family:monospace;
-      font-size:11px;letter-spacing:0.25em;cursor:pointer;z-index:10;`;
-    overlay.textContent = 'TAP TO START';
-    document.body.appendChild(overlay);
-
-    function startAudio(e) {
-      e.preventDefault();
-      initAudio();
-      // iOS Safari requires a silent buffer played synchronously inside the gesture
-      // to fully unlock the AudioContext — without this, all notes are silently dropped
-      const unlock = audioCtx.createBuffer(1, 1, audioCtx.sampleRate);
-      const src = audioCtx.createBufferSource();
-      src.buffer = unlock;
-      src.connect(audioCtx.destination);
-      src.start(0);
-      audioCtx.resume().then(() => { seqNext = audioCtx.currentTime + 0.1; });
-      overlay.remove();
+      // Start tick() only after context is confirmed running
+      audioCtx.resume().then(() => {
+        seqNext = audioCtx.currentTime + 0.1;
+        tick();
+      });
     }
     overlay.addEventListener('touchstart', startAudio, { once: true, passive: false });
     overlay.addEventListener('click',      startAudio, { once: true });
