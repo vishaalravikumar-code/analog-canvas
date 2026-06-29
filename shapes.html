@@ -435,14 +435,21 @@
     overlay.textContent = 'TAP TO START';
     document.body.appendChild(overlay);
 
-    function startAudio() {
+    function startAudio(e) {
+      e.preventDefault();
       initAudio();
-      // iOS Safari suspends AudioContext even after creation — must resume inside gesture
-      if (audioCtx.state === 'suspended') audioCtx.resume();
+      // iOS Safari requires a silent buffer played synchronously inside the gesture
+      // to fully unlock the AudioContext — without this, all notes are silently dropped
+      const unlock = audioCtx.createBuffer(1, 1, audioCtx.sampleRate);
+      const src = audioCtx.createBufferSource();
+      src.buffer = unlock;
+      src.connect(audioCtx.destination);
+      src.start(0);
+      audioCtx.resume().then(() => { seqNext = audioCtx.currentTime + 0.1; });
       overlay.remove();
     }
+    overlay.addEventListener('touchstart', startAudio, { once: true, passive: false });
     overlay.addEventListener('click',      startAudio, { once: true });
-    overlay.addEventListener('touchend',   startAudio, { once: true });
   </script>
 </body>
 </html>
