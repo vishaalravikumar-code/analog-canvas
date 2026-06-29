@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Shapes</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #000; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+  <script>
+    const canvas = document.getElementById('c');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth || 1280;
+    canvas.height = window.innerHeight || 720;
+    const W = canvas.width, H = canvas.height;
+    const CX = W / 2, CY = H / 2;
+    const S = 90;
+
+    // Per-shape draw offset so each shape appears centered on screen
+    let drawOX = 0, drawOY = 0;
+    let rotAngle = 0;
+
+    function iso(ix, iy, iz) {
+      const cos = Math.cos(rotAngle), sin = Math.sin(rotAngle);
+      const rx = ix * cos - iy * sin;
+      const ry = ix * sin + iy * cos;
+      return [CX + drawOX + (rx - ry) * S, CY + drawOY + (rx + ry) * S * 0.5 - iz * S];
+    }
+
+    // Compute the screen-space offset needed to center a shape
+    function shapeOffset(cubes) {
+      const n = cubes.length;
+      let sx = 0, sy = 0;
+      for (const [x,y,z] of cubes) {
+        // cube center is at integer coords; screen center of cube:
+        sx += ((x - y)) * S;
+        sy += ((x + y) * 0.5 - z) * S;
+      }
+      return [-sx / n, -sy / n];
+    }
+
+    function drawFace(octx, pts, fill, stroke, lw) {
+      octx.beginPath();
+      octx.moveTo(pts[0][0], pts[0][1]);
+      for (let i = 1; i < pts.length; i++) octx.lineTo(pts[i][0], pts[i][1]);
+      octx.closePath();
+      if (fill) { octx.fillStyle = fill; octx.fill(); }
+      if (stroke) { octx.strokeStyle = stroke; octx.lineWidth = lw || 1; octx.stroke(); }
+    }
+
+    // Each cube defined by its center [cx,cy,cz]
+    function cubeFaces(cx, cy, cz) {
+      const x0 = cx-0.5, x1 = cx+0.5, y0 = cy-0.5, y1 = cy+0.5, z0 = cz-0.5, z1 = cz+0.5;
+      return {
+        top:   [iso(x0,y0,z1), iso(x1,y0,z1), iso(x1,y1,z1), iso(x0,y1,z1)],
+        left:  [iso(x0,y0,z0), iso(x0,y1,z0), iso(x0,y1,z1), iso(x0,y0,z1)],
+        right: [iso(x0,y0,z0), iso(x1,y0,z0), iso(x1,y0,z1), iso(x0,y0,z1)],
+      };
+    }
+
+    function renderFilled(octx, cubes) {
+      const sorted = [...cubes].sort((a,b) => (a[0]+a[1]+a[2])-(b[0]+b[1]+b[2]));
+      for (const [cx,cy,cz] of sorted) {
+        const {top,left,right} = cubeFaces(cx,cy,cz);
+        drawFace(octx, top,   null, '#f5e642', 1.5);
+        drawFace(octx, left,  null, '#e8409a', 1.5);
+        drawFace(octx, right, null, '#2e5bff', 1.5);
+      }
+    }
+
+    function renderOutline(octx, cubes, color, lw) {
+      octx.strokeStyle = color;
+      octx.lineWidth = lw || 1.5;
+      for (const [cx,cy,cz] of cubes) {
+        const {top,left,right} = cubeFaces(cx,cy,cz);
+        for (const pts of [top,left,right]) {
+          drawFace(octx, pts, null, color, lw);
+        }
+      }
+    }
+
+    const SHAPES = [
+      // 4-fold flat plus
+      [[-1,0,0],[0,0,0],[1,0,0],[0,-1,0],[0,1,0]],
+      // 4-fold plus with centre pillar
+      [[-1,0,0],[0,0,0],[1,0,0],[0,-1,0],[0,1,0],[0,0,1],[0,0,2]],
+      // 6-fold asterisk — one cube on each of the 6 axis directions
+      [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]],
+      // 6-fold hexagonal ring
+      [[1,0,0],[1,1,0],[0,1,0],[-1,1,0],[-1,0,0],[0,-1,0]],
+      // 4-fold diamond (4 arms, no centre)
+      [[1,0,0],[0,1,0],[-1,0,0],[0,-1,0]],
+      // 4-fold diamond ring stacked — two rings connected by centre column
+      [[1,0,0],[0,1,0],[-1,0,0],[0,-1,0],[0,0,1],[1,0,2],[0,1,2],[-1,0,2],[0,-1,2]],
+      // Mirror-symmetric U-bracket
+      [[-1,0,2],[-1,0,1],[-1,0,0],[0,0,0],[1,0,0],[1,0,1],[1,0,2]],
+      // 2×2 solid square + centre raised
+      [[0,0,0],[1,0,0],[0,1,0],[1,1,0],[0,0,1],[1,1,1]],
+    ];
+
+    const OFFSETS = SHAPES.map(shapeOffset);
+
+    let shapeIdx = 2; // asterisk — fixed, no cycling
+    let nextIdx = 2;
+    let phase = 'hold';
+    let phaseTime = 0;
+    let transData = null;
+
+    function startTransition() {
+      const cur = SHAPES[shapeIdx];
+      const nxt = SHAPES[nextIdx];
+      transData = {
+        outOffsets: cur.map(() => [(Math.random()-0.5)*8, (Math.random()-0.5)*8, Math.random()*5+1]),
+        outDelay:   cur.map(() => Math.random()*0.3),
+        inOffsets:  nxt.map(() => [(Math.random()-0.5)*8, (Math.random()-0.5)*8, Math.random()*5+1]),
+        inDelay:    nxt.map(() => Math.random()*0.3),
+      };
+    }
+
+    const fb   = document.createElement('canvas'); fb.width=W; fb.height=H;
+    const fbCtx = fb.getContext('2d');
+    const prev  = document.createElement('canvas'); prev.width=W; prev.height=H;
+    const prevCtx = prev.getContext('2d');
+    const off   = document.createElement('canvas'); off.width=W; off.height=H;
+    const offCtx = off.getContext('2d');
+
+    let lastTime = performance.now(), t = 0;
+
+    const TRAIL_COLORS = [[255,20,147],[0,100,255],[20,255,80]];
+    function getTrailColor(ms) {
+      const p = ((ms % 9000) / 9000) * 3;
+      const i = Math.floor(p) % 3, f = p - Math.floor(p);
+      const a = TRAIL_COLORS[i], b = TRAIL_COLORS[(i+1)%3];
+      return [Math.round(a[0]+(b[0]-a[0])*f), Math.round(a[1]+(b[1]-a[1])*f), Math.round(a[2]+(b[2]-a[2])*f)];
+    }
+
+    function easeOut(x) { return 1 - Math.pow(1 - x, 3); }
+    function easeIn(x)  { return x * x * x; }
+
+    // Returns displaced cubes + per-cube alpha for current transition state
+    function getTransCubes(p) {
+      const out = [], outA = [];
+      const inn = [], inA  = [];
+
+      SHAPES[shapeIdx].forEach(([cx,cy,cz], i) => {
+        const d = transData.outDelay[i];
+        const lp = Math.min(Math.max((p - d) / (1 - d), 0), 1);
+        const e = easeIn(lp);
+        const [ox,oy,oz] = transData.outOffsets[i];
+        out.push([cx + ox*e, cy + oy*e, cz + oz*e]);
+        outA.push(1 - lp);
+      });
+
+      SHAPES[nextIdx].forEach(([cx,cy,cz], i) => {
+        const d = transData.inDelay[i];
+        const lp = Math.min(Math.max((p - d) / (1 - d), 0), 1);
+        const e = easeOut(lp);
+        const [ox,oy,oz] = transData.inOffsets[i];
+        inn.push([cx + ox*(1-e), cy + oy*(1-e), cz + oz*(1-e)]);
+        inA.push(lp);
+      });
+
+      return { out, outA, inn, inA };
+    }
+
+    function renderOutlineAlpha(octx, cubes, alphas, color, lw) {
+      for (let i = 0; i < cubes.length; i++) {
+        if (alphas[i] < 0.01) continue;
+        octx.globalAlpha = alphas[i];
+        renderOutline(octx, [cubes[i]], color, lw);
+      }
+      octx.globalAlpha = 1;
+    }
+
+    function renderFilledAlpha(octx, cubes, alphas) {
+      const sorted = cubes.map((c,i) => [c,i]).sort((a,b) => (a[0][0]+a[0][1]+a[0][2])-(b[0][0]+b[0][1]+b[0][2]));
+      for (const [cube, i] of sorted) {
+        if (alphas[i] < 0.01) continue;
+        octx.globalAlpha = alphas[i];
+        renderFilled(octx, [cube]);
+      }
+      octx.globalAlpha = 1;
+    }
+
+    function drawPass(col, dx, dy, p) {
+      offCtx.clearRect(0, 0, W, H);
+      if (phase === 'hold') {
+        renderOutline(offCtx, SHAPES[shapeIdx], col, 3);
+      } else {
+        const { out, outA, inn, inA } = getTransCubes(p);
+        renderOutlineAlpha(offCtx, out, outA, col, 1.5);
+        renderOutlineAlpha(offCtx, inn, inA,  col, 1.5);
+      }
+      fbCtx.drawImage(off, dx, dy);
+    }
+
+    function animate(now) {
+      const dt = Math.min(now - lastTime, 50);
+      lastTime = now;
+      t += dt;
+      phaseTime += dt;
+
+      let transP = 0;
+      // shape is fixed — no cycling
+
+      rotAngle += dt * 0.0003;
+      const pulse = Math.sin(t * 0.0019);
+      const bigGlitch = pulse > 0.94 ? (Math.random() - 0.5) * 20 : 0;
+      const split = 3 + Math.sin(t * 0.0013) * 1.5;
+
+      // Feedback loop
+      prevCtx.clearRect(0,0,W,H); prevCtx.drawImage(fb,0,0);
+      fbCtx.fillStyle = 'rgba(0,0,0,0.12)'; fbCtx.fillRect(0,0,W,H);
+      fbCtx.save();
+      fbCtx.translate(CX,CY); fbCtx.scale(0.94,0.94);
+      fbCtx.rotate(0.0015 + Math.sin(t*0.0007)*0.001);
+      fbCtx.translate(-CX,-CY); fbCtx.drawImage(prev,0,0);
+      fbCtx.restore();
+
+      const [tr,tg,tb] = getTrailColor(t);
+      const col = `rgb(${tr},${tg},${tb})`;
+      // Interpolate draw offset between current and next shape
+      const [ox1, oy1] = OFFSETS[shapeIdx];
+      const [ox2, oy2] = OFFSETS[nextIdx];
+      drawOX = ox1 + (ox2 - ox1) * transP;
+      drawOY = oy1 + (oy2 - oy1) * transP;
+
+      fbCtx.globalCompositeOperation = 'screen';
+      drawPass(col, -(split+bigGlitch),  1, transP);
+      drawPass(col,   bigGlitch*0.15,    0, transP);
+      drawPass(col,   split+bigGlitch,  -1, transP);
+      fbCtx.globalCompositeOperation = 'source-over';
+
+      // Main canvas
+      ctx.fillStyle = '#000'; ctx.fillRect(0,0,W,H);
+      ctx.drawImage(fb,0,0);
+
+      // Shapes hidden
+
+      // Scanlines
+      for (let y = 0; y < H; y += 2) { ctx.fillStyle='rgba(0,0,0,0.82)'; ctx.fillRect(0,y,W,1); }
+      for (let y = 0; y < H; y += 4) { ctx.fillStyle='rgba(0,0,0,0.18)'; ctx.fillRect(0,y,W,2); }
+      for (let y = 0; y < H; y += 8) { ctx.fillStyle='rgba(0,0,0,0.12)'; ctx.fillRect(0,y,W,4); }
+
+      // Rolling beam
+      ctx.fillStyle='rgba(255,255,255,0.05)'; ctx.fillRect(0,(t*0.1)%H,W,6);
+
+      // Distortion strips
+      const nS = bigGlitch !== 0 ? 8 : Math.floor(Math.random()*4+1);
+      for (let k = 0; k < nS; k++) {
+        const sy=Math.floor(Math.random()*H), sh=Math.floor(Math.random()*35+2);
+        const sx=Math.floor((Math.random()-0.5)*(bigGlitch!==0?60:28));
+        try { const s=ctx.getImageData(0,sy,W,Math.min(sh,H-sy)); ctx.putImageData(s,sx,sy); } catch(e){}
+      }
+
+      if (Math.random()>0.97) {
+        const ty=Math.floor(Math.random()*H), th=Math.min(Math.floor(Math.random()*80+20),H-ty);
+        try { const s=ctx.getImageData(0,ty,W,th); ctx.putImageData(s,0,ty+Math.floor(Math.random()*20-10)); } catch(e){}
+      }
+      if (Math.random()>0.93) { ctx.fillStyle=`rgba(255,255,255,${Math.random()*0.35})`; ctx.fillRect(0,Math.floor(Math.random()*H),W,Math.floor(Math.random()*12+2)); }
+      if (Math.random()>0.96) { ctx.fillStyle=`rgba(255,255,255,${Math.random()*0.07})`; ctx.fillRect(0,0,W,H); }
+
+      // Vignette
+      const vg=ctx.createRadialGradient(CX,CY,H*0.18,CX,CY,H*0.78);
+      vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(0,0,0,0.75)');
+      ctx.fillStyle=vg; ctx.fillRect(0,0,W,H);
+
+      // Grain
+      for (let i=0;i<180;i++) { ctx.fillStyle=`rgba(255,255,255,${Math.random()*0.18})`; ctx.fillRect(Math.random()*W,Math.random()*H,1,1); }
+
+      requestAnimationFrame(animate);
+    }
+
+    requestAnimationFrame(animate);
+  </script>
+
+  <script>
+    // ── PHILIP GLASS ANALOG SYNTH ENGINE ──────────────────────────────────
+
+    let audioCtx = null;
+    let masterGain = null;
+
+    function buildReverb() {
+      const conv = audioCtx.createConvolver();
+      const sr   = audioCtx.sampleRate;
+      const buf  = audioCtx.createBuffer(2, Math.floor(sr * 3.5), sr);
+      for (let c = 0; c < 2; c++) {
+        const d = buf.getChannelData(c);
+        for (let i = 0; i < d.length; i++)
+          d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 2.2);
+      }
+      conv.buffer = buf;
+      return conv;
+    }
+
+    function midiFreq(m) { return 440 * Math.pow(2, (m - 69) / 12); }
+
+    function playArp(midi, t, dur, vol = 0.22) {
+      const f = midiFreq(midi);
+      [1, 1.0028].forEach(detune => {
+        const osc  = audioCtx.createOscillator();
+        const filt = audioCtx.createBiquadFilter();
+        const env  = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.value = f * detune;
+        filt.type = 'lowpass'; filt.frequency.value = 2000; filt.Q.value = 0.6;
+        osc.connect(filt); filt.connect(env); env.connect(masterGain);
+        env.gain.setValueAtTime(0, t);
+        env.gain.linearRampToValueAtTime(vol * (detune === 1 ? 1 : 0.4), t + 0.008);
+        env.gain.exponentialRampToValueAtTime(0.001, t + dur);
+        osc.start(t); osc.stop(t + dur + 0.02);
+      });
+    }
+
+    function playBass(midi, t, dur) {
+      const osc  = audioCtx.createOscillator();
+      const filt = audioCtx.createBiquadFilter();
+      const env  = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = midiFreq(midi);
+      filt.type = 'lowpass'; filt.frequency.value = 280;
+      osc.connect(filt); filt.connect(env); env.connect(masterGain);
+      env.gain.setValueAtTime(0, t);
+      env.gain.linearRampToValueAtTime(0.55, t + 0.06);
+      env.gain.setValueAtTime(0.35, t + dur * 0.65);
+      env.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      osc.start(t); osc.stop(t + dur + 0.05);
+    }
+
+    function playPad(midi, t, dur) {
+      const osc  = audioCtx.createOscillator();
+      const filt = audioCtx.createBiquadFilter();
+      const env  = audioCtx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.value = midiFreq(midi);
+      filt.type = 'lowpass'; filt.frequency.value = 550; filt.Q.value = 0.3;
+      osc.connect(filt); filt.connect(env); env.connect(masterGain);
+      env.gain.setValueAtTime(0, t);
+      env.gain.linearRampToValueAtTime(0.045, t + 0.9);
+      env.gain.setValueAtTime(0.045, t + dur - 0.6);
+      env.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      osc.start(t); osc.stop(t + dur + 0.05);
+    }
+
+    // Progression built around perpetual unresolved tension.
+    // Every time E (dominant) arrives and your ear expects Am, it sidesteps to F (deceptive cadence).
+    // When Am does appear, it's immediately pulled into a sus chord before it can settle.
+    // Bdim7 (B D F Ab) is fully symmetrical — equally wants to resolve 4 different ways, so it never commits.
+    const CHORDS = [
+      { bass: 45, arp: [57,60,64,69,64,60], pad: [57,60,64] }, // Am       — tonic, but brief
+      { bass: 45, arp: [57,62,64,69,64,62], pad: [57,62,64] }, // Asus4    — immediately stolen into suspension
+      { bass: 45, arp: [57,59,64,69,64,59], pad: [57,59,64] }, // Asus2    — still floating, no resolution
+      { bass: 47, arp: [59,62,65,68,65,62], pad: [59,62,65] }, // Bdim7    — fully diminished (B D F Ab), pure ambiguity
+      { bass: 40, arp: [52,57,59,64,59,57], pad: [52,57,59] }, // Esus4    — dominant arriving, suspended, building...
+      { bass: 40, arp: [52,56,59,64,59,56], pad: [52,56,59] }, // E        — full dominant. Resolution is HERE—
+      { bass: 41, arp: [53,57,60,65,60,57], pad: [53,57,60] }, // F        — DECEPTIVE. Sidesteps Am. Silence where the landing should be.
+      { bass: 41, arp: [53,55,60,65,60,55], pad: [53,55,60] }, // Fsus2    — F itself suspended, no resting place
+      { bass: 43, arp: [55,60,62,67,62,60], pad: [55,60,62] }, // Gsus4    — building toward something again...
+      { bass: 45, arp: [57,62,64,69,64,62], pad: [57,62,64] }, // Asus4    — Am returns but suspended, still no landing
+      { bass: 47, arp: [59,62,65,68,65,62], pad: [59,62,65] }, // Bdim7    — ambiguity returns, tension peak
+      { bass: 38, arp: [50,53,57,62,57,53], pad: [50,53,57] }, // Dm       — minor iv, dark, building
+      { bass: 40, arp: [52,57,59,64,59,57], pad: [52,57,59] }, // Esus4    — dominant again, suspended... here it comes again...
+      { bass: 40, arp: [52,56,59,64,59,56], pad: [52,56,59] }, // E        — full dominant again. This time for sure—
+      { bass: 41, arp: [53,57,60,65,60,57], pad: [53,57,60] }, // F        — DECEPTIVE again. Still no Am. Never Am.
+      { bass: 45, arp: [57,59,64,69,64,59], pad: [57,59,64] }, // Asus2    — dissolves back into suspension, loop begins again
+    ];
+
+    const BPM  = 108;
+    const BEAT = 60 / BPM;
+    const SIX  = BEAT / 4;
+    const BAR  = BEAT * 4;
+
+    let seqNext = 0, arpI = 0, sixI = 0, chordI = 0;
+
+    function tick() {
+      const ahead = audioCtx.currentTime + 0.15;
+      while (seqNext < ahead) {
+        const ch = CHORDS[chordI];
+
+        // Arpeggio — continuous (not reset on chord change → Glass phase drift)
+        playArp(ch.arp[arpI % ch.arp.length], seqNext, SIX * 1.65);
+
+        // Bar 1: bass + pad sustain
+        if (sixI === 0) {
+          playBass(ch.bass, seqNext, BAR * 0.95);
+          ch.pad.forEach(n => playPad(n, seqNext, BAR * 0.88));
+        }
+
+        // Beat 3: inner counter-voice (counterpoint)
+        if (sixI === 8) {
+          playArp(ch.arp[2], seqNext, BEAT * 0.85, 0.1);
+        }
+
+        seqNext += SIX;
+        arpI++;
+        sixI++;
+        if (sixI >= 16) { sixI = 0; chordI = (chordI + 1) % CHORDS.length; }
+      }
+      setTimeout(tick, 20);
+    }
+
+    function initAudio() {
+      audioCtx   = new (window.AudioContext || window.webkitAudioContext)();
+      masterGain = audioCtx.createGain();
+      masterGain.gain.value = 0.72;
+
+      const comp = audioCtx.createDynamicsCompressor();
+      comp.threshold.value = -18; comp.ratio.value = 5;
+      comp.attack.value = 0.003;  comp.release.value = 0.25;
+
+      const rev = buildReverb();
+      const dry = audioCtx.createGain(); dry.gain.value = 0.48;
+      const wet = audioCtx.createGain(); wet.gain.value = 0.52;
+
+      masterGain.connect(comp);
+      comp.connect(dry); dry.connect(audioCtx.destination);
+      comp.connect(rev); rev.connect(wet); wet.connect(audioCtx.destination);
+
+      seqNext = audioCtx.currentTime + 0.2;
+      tick();
+    }
+
+    // Click-to-start overlay
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `position:fixed;inset:0;display:flex;align-items:center;
+      justify-content:center;color:rgba(255,255,255,0.5);font-family:monospace;
+      font-size:11px;letter-spacing:0.25em;cursor:pointer;z-index:10;`;
+    overlay.textContent = 'CLICK TO START';
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', () => { initAudio(); overlay.remove(); }, { once: true });
+  </script>
+</body>
+</html>

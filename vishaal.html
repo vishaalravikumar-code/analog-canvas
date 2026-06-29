@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Vishaal Ravikumar</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #000; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+  <script>
+    const canvas = document.getElementById('c');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth || 1280;
+    canvas.height = window.innerHeight || 720;
+    const W = canvas.width, H = canvas.height;
+
+    const tamilMap = {
+      V:'வ', I:'இ', S:'ச', H:'ஹ', A:'அ', L:'ல',
+      R:'ர', K:'க', U:'உ', M:'ம'
+    };
+
+    function makeLetters(str) {
+      return str.split('').map(ch => ({
+        ch, tamil: tamilMap[ch] || ch,
+        glitching: false, timer: 0,
+        next: Math.random() * 2000 + 400
+      }));
+    }
+
+    const L1 = makeLetters('VISHAAL');
+    const L2 = makeLetters('RAVIKUMAR');
+
+    const off = document.createElement('canvas');
+    off.width = W; off.height = H;
+    const offCtx = off.getContext('2d');
+
+    // feedback canvas — accumulates the recursive zoom/rotate loop
+    const fb = document.createElement('canvas');
+    fb.width = W; fb.height = H;
+    const fbCtx = fb.getContext('2d');
+
+    let lastTime = performance.now();
+    let t = 0;
+
+    function updateLetters(ls, dt) {
+      for (const l of ls) {
+        if (l.glitching) {
+          l.timer -= dt;
+          if (l.timer <= 0) { l.glitching = false; l.next = Math.random() * 2200 + 300; }
+        } else {
+          l.next -= dt;
+          if (l.next <= 0) { l.glitching = true; l.timer = Math.random() * 280 + 60; }
+        }
+      }
+    }
+
+    function renderLine(letters, y, fontSize, mode = 'stroke') {
+      const gap = fontSize * 0.25;
+      const chars = letters.map(l => l.glitching ? l.tamil : l.ch);
+      const fonts = letters.map(l => l.glitching
+        ? `${fontSize * 1.1}px 'Noto Sans Tamil', sans-serif`
+        : `${fontSize}px 'Press Start 2P', monospace`
+      );
+      const widths = chars.map((ch, i) => {
+        offCtx.font = fonts[i];
+        return offCtx.measureText(ch).width;
+      });
+      const totalW = widths.reduce((s, w) => s + w + gap, -gap);
+      let x = (W - totalW) / 2;
+      for (let i = 0; i < chars.length; i++) {
+        offCtx.font = fonts[i];
+        const yOff = letters[i].glitching ? (Math.random() - 0.5) * 4 : 0;
+        if (mode === 'fill') offCtx.fillText(chars[i], x, y + yOff);
+        else offCtx.strokeText(chars[i], x, y + yOff);
+        x += widths[i] + gap;
+      }
+    }
+
+    function drawPass(color, dx, dy) {
+      const fontSize = Math.min(W / 15, 48);
+      const cy = H / 2;
+      const spacing = fontSize * 2.4;
+      offCtx.clearRect(0, 0, W, H);
+      offCtx.strokeStyle = color;
+      offCtx.lineWidth = 1.5;
+      offCtx.textBaseline = 'middle';
+      renderLine(L1, cy - spacing * 0.5, fontSize);
+      renderLine(L2, cy + spacing * 0.5, fontSize);
+      fbCtx.drawImage(off, dx, dy);
+    }
+
+    function animate(now) {
+      const dt = Math.min(now - lastTime, 50);
+      lastTime = now;
+      t += dt;
+
+      updateLetters(L1, dt);
+      updateLetters(L2, dt);
+
+      const pulse = Math.sin(t * 0.0019);
+      const bigGlitch = pulse > 0.94 ? (Math.random() - 0.5) * 30 : 0;
+      const split = 3.5 + Math.sin(t * 0.0013) * 1.5;
+
+      // Step 1: feedback loop — zoom+rotate previous feedback into itself
+      fbCtx.save();
+      fbCtx.globalAlpha = 0.55;
+      fbCtx.translate(W / 2, H / 2);
+      fbCtx.scale(0.988, 0.988);
+      fbCtx.rotate(0.0015 + Math.sin(t * 0.0007) * 0.001);
+      fbCtx.translate(-W / 2, -H / 2);
+      fbCtx.drawImage(fb, 0, 0);
+      fbCtx.restore();
+      fbCtx.globalAlpha = 1;
+
+      // Step 2: composite new text frame onto feedback canvas with screen blend
+      fbCtx.globalCompositeOperation = 'screen';
+      drawPass('rgb(180, 10, 10)', -(split + bigGlitch), 1);
+      drawPass('rgb(10, 180, 200)',  bigGlitch * 0.15,    0);
+      drawPass('rgb(10, 10, 200)',   split + bigGlitch, -1);
+      fbCtx.globalCompositeOperation = 'source-over';
+
+      // Step 3: draw feedback to main canvas
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, W, H);
+      ctx.drawImage(fb, 0, 0);
+
+      // Step 4: draw solid filled letters on top so they stay readable
+      ctx.globalCompositeOperation = 'source-over';
+      const fontSize = Math.min(W / 15, 48);
+      const cy = H / 2;
+      const spacing = fontSize * 2.4;
+      offCtx.clearRect(0, 0, W, H);
+      offCtx.fillStyle = '#fff';
+      offCtx.strokeStyle = '#fff';
+      offCtx.lineWidth = 1.5;
+      offCtx.textBaseline = 'middle';
+      renderLine(L1, cy - spacing * 0.5, fontSize, 'fill');
+      renderLine(L2, cy + spacing * 0.5, fontSize, 'fill');
+      ctx.drawImage(off, 0, 0);
+
+      for (let y = 0; y < H; y += 3) {
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.fillRect(0, y, W, 1);
+      }
+
+      const scanY = (t * 0.1) % H;
+      ctx.fillStyle = 'rgba(255,255,255,0.04)';
+      ctx.fillRect(0, scanY, W, 5);
+
+      const nStrips = bigGlitch !== 0 ? 5 : (Math.random() > 0.87 ? 1 : 0);
+      for (let k = 0; k < nStrips; k++) {
+        const sy = Math.floor(Math.random() * H);
+        const sh = Math.floor(Math.random() * 30 + 4);
+        const sx = Math.floor((Math.random() - 0.5) * (bigGlitch !== 0 ? 35 : 14));
+        try {
+          const strip = ctx.getImageData(0, sy, W, Math.min(sh, H - sy));
+          ctx.putImageData(strip, sx, sy);
+        } catch(e) {}
+      }
+
+      const vg = ctx.createRadialGradient(W/2, H/2, H * 0.18, W/2, H/2, H * 0.78);
+      vg.addColorStop(0, 'rgba(0,0,0,0)');
+      vg.addColorStop(1, 'rgba(0,0,0,0.7)');
+      ctx.fillStyle = vg;
+      ctx.fillRect(0, 0, W, H);
+
+      for (let i = 0; i < 60; i++) {
+        ctx.fillStyle = `rgba(255,255,255,${Math.random() * 0.12})`;
+        ctx.fillRect(Math.random() * W, Math.random() * H, 1, 1);
+      }
+
+
+      requestAnimationFrame(animate);
+    }
+
+    document.fonts.ready.then(() => requestAnimationFrame(animate));
+  </script>
+</body>
+</html>

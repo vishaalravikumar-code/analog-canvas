@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Swirls</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #000; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+  <script>
+    const canvas = document.getElementById('c');
+    const ctx = canvas.getContext('2d');
+
+    function resize() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    const swirls = [
+      { x: 0.5,  y: 0.46, color: [180, 80, 220] },
+      { x: 0.29, y: 0.38, color: [80, 160, 255] },
+      { x: 0.65, y: 0.54, color: [255, 120, 60] },
+      { x: 0.44, y: 0.65, color: [60, 220, 160] },
+      { x: 0.71, y: 0.33, color: [255, 200, 60] },
+    ];
+
+    let t = 0;
+
+    function drawRings(swirl, time, w, h) {
+      const cx = swirl.x * w + Math.sin(time * 0.7 + swirl.x * 10) * 18;
+      const cy = swirl.y * h + Math.cos(time * 0.5 + swirl.y * 10) * 12;
+      const numRings = 22;
+
+      for (let i = numRings; i >= 0; i--) {
+        const progress = i / numRings;
+        const angle = time * 1.2 + progress * Math.PI * 2.5;
+        const rx = (60 + i * 9) * (1 + 0.18 * Math.sin(angle));
+        const ry = (38 + i * 6) * (1 + 0.18 * Math.cos(angle + 1));
+        const alpha = (1 - progress) * 0.55 + 0.08;
+        const [r, g, b] = swirl.color;
+        const shift = i / numRings;
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, rx, ry, angle * 0.4, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(${Math.round(r*(1-shift*0.5))},${Math.round(g*(1-shift*0.3))},${Math.round(b)},${alpha})`;
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+      }
+    }
+
+    function drawCRT(w, h) {
+      const imageData = ctx.getImageData(0, 0, w, h);
+      const data = imageData.data;
+      for (let y = 0; y < h; y += 2) {
+        for (let x = 0; x < w; x++) {
+          const idx = (y * w + x) * 4;
+          data[idx]   = Math.round(data[idx]   * 0.55);
+          data[idx+1] = Math.round(data[idx+1] * 0.55);
+          data[idx+2] = Math.round(data[idx+2] * 0.55);
+        }
+      }
+      ctx.putImageData(imageData, 0, 0);
+
+      ctx.fillStyle = 'rgba(255,255,255,0.012)';
+      const scanY = (t * 180) % h;
+      ctx.fillRect(0, scanY, w, 3);
+
+      const gradient = ctx.createRadialGradient(w/2, h/2, h*0.3, w/2, h/2, h);
+      gradient.addColorStop(0, 'rgba(0,0,0,0)');
+      gradient.addColorStop(1, 'rgba(0,0,0,0.6)');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, w, h);
+    }
+
+    function animate() {
+      t += 0.016;
+      const w = canvas.width, h = canvas.height;
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fillRect(0, 0, w, h);
+
+      for (const swirl of swirls) {
+        drawRings(swirl, t, w, h);
+      }
+
+      drawCRT(w, h);
+      requestAnimationFrame(animate);
+    }
+    animate();
+  </script>
+</body>
+</html>
