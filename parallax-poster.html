@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ember Mesa — A Vintage Poster Parallax</title>
+
+<!-- ============================================================
+     EMBER MESA — scroll-driven parallax in vintage poster style
+     ------------------------------------------------------------
+     Structure:
+       .stage        fixed, full-bleed, holds the 3 art layers in a
+                     CSS 3D context (perspective + preserve-3d)
+       .layer        one absolutely-positioned depth plane. Each is
+                     TALLER than the viewport so it can slide
+                     vertically without exposing edges.
+       main sections normal document flow — they provide the scroll
+                     height and carry the text content.
+     Art (assets/):
+       sky.webp      pixel-art sky, moon + clouds baked in (opaque)
+       citadel.webp  arch-gate + stair tower, transparent sky
+       rocks.webp    foreground rocks + staircase, transparent sky
+     Animation:
+       GSAP + ScrollTrigger (cdnjs). One scrubbed tween per layer,
+       each with a different yPercent -> different apparent speed.
+       See the LAYERS config table in the <script> at the bottom.
+     ============================================================ -->
+
+<link rel="preload" as="image" href="assets/sky.webp">
+<link rel="preload" as="image" href="assets/citadel.webp">
+<link rel="preload" as="image" href="assets/rocks.webp">
+
+<style>
+  :root {
+    /* ---- palette pulled from the plates ---- */
+    --sky-deep:   #1a1f8f;   /* fallback behind the sky image      */
+    --ink:        #0c0a14;   /* poster "black line" / text shadow  */
+    --moon:       #f2e9b8;   /* pale cream                         */
+    --cream:      #f4efdd;   /* text off-white                     */
+    --ground-mid: #2f2e25;   /* extends citadel plate downward     */
+    --ground-fore:#170d05;   /* extends rocks plate downward       */
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: auto; }
+
+  body {
+    background: var(--sky-deep);
+    color: var(--cream);
+    font-family: Georgia, 'Times New Roman', serif;
+    overflow-x: hidden;
+  }
+
+  /* ================= FIXED ART STAGE ================= */
+
+  .stage {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    /* the fake-3D camera: children with translateZ get real
+       perspective divergence on top of the scrubbed tweens */
+    perspective: 1200px;
+    perspective-origin: 50% 40%;
+    z-index: 0;
+  }
+
+  .layers {
+    position: absolute;
+    inset: 0;
+    transform-style: preserve-3d;   /* keep children in one 3D space */
+  }
+
+  /* Every layer is oversized so a yPercent slide never reveals a gap.
+     Extra height = movement budget; the foreground moves the most. */
+  .layer {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    will-change: transform;
+  }
+  /* base blue sampled from the sky plate — fills whatever the
+     re-centered image doesn't cover at the sides */
+  #layer-sky  { height: 110%; background: #030ca6; }
+  #layer-far  { height: 120%; }
+  #layer-mid  { height: 130%; }
+  #layer-fore { height: 145%; }
+
+  /* Sky plate: full layer height at natural aspect, slid sideways so
+     the MOON (at ~89% across the plate) sits dead center; the layer's
+     background color fills the uncovered strip at the right edge. */
+  #layer-sky img {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 50%;
+    height: 100%;
+    width: auto;
+    transform: translateX(-89%);
+    image-rendering: pixelated;   /* keep the pixel-art crunch when scaled */
+  }
+
+  /* Citadel / rocks plates: pinned to the top 100vh of their layer so
+     their ground line starts exactly on the viewport bottom edge. */
+  #layer-mid img,
+  #layer-fore img {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    object-fit: cover;
+    object-position: center bottom;
+  }
+
+  /* Mountains: sized by viewport HEIGHT at natural aspect so the
+     summit is never cover-cropped on wide screens. Sits 12vh lower
+     so more sky (and the moon) stays open; on screens wider than
+     the plate, the side edges feather into the sky like haze. */
+  #layer-far img {
+    display: block;
+    position: absolute;
+    top: 12vh;
+    left: 50%;
+    height: 100vh;
+    width: auto;
+    transform: translateX(-50%);
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 7%, #000 93%, transparent 100%);
+    mask-image: linear-gradient(90deg, transparent 0, #000 7%, #000 93%, transparent 100%);
+  }
+
+  /* As a layer slides up, the area under its plate scrolls into view.
+     These "ground" fills continue each plate downward so no gap ever
+     appears at the bottom of the screen. They start 14vh above the
+     plate's bottom edge and fade in, so the hand-off reads as a soft
+     ink shadow instead of a hard seam. */
+  .ground-fill {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(100vh - 14vh);
+    bottom: 0;
+  }
+  #layer-mid .ground-fill {
+    background: linear-gradient(180deg, rgba(47, 46, 37, 0) 0, var(--ground-mid) 14vh, var(--ground-mid) 100%);
+  }
+  #layer-fore .ground-fill {
+    background: linear-gradient(180deg, rgba(23, 13, 5, 0) 0, var(--ground-fore) 14vh, var(--ground-fore) 100%);
+  }
+
+  /* Dusk wash — a flat tint that deepens on the final scene so the
+     scenes feel like they "morph" without swapping any artwork. */
+  .dusk {
+    position: absolute;
+    inset: 0;
+    background: #05041f;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  /* ================= SCROLL SCENES ================= */
+  /* Empty full-height spacers: they only exist to create the scroll
+     distance that drives the parallax (and the dusk wash triggers). */
+
+  main { position: relative; z-index: 1; }
+
+  .scene { min-height: 100vh; }
+</style>
+</head>
+<body>
+
+<!-- ##################################################################
+     THE ART STAGE — three image depth planes, back to front.
+     To swap a plate, replace its file in assets/ (keep transparent
+     sky on the citadel/rocks plates) — nothing else needs to change.
+     ################################################################## -->
+<div class="stage" aria-hidden="true">
+  <div class="layers">
+
+    <!-- LAYER 1 · SKY — moon + clouds baked in (slowest) -->
+    <div class="layer" id="layer-sky">
+      <img src="assets/sky.webp" alt="">
+    </div>
+
+    <!-- LAYER 2 · MOUNTAINS — hazy distant range (slow) -->
+    <div class="layer" id="layer-far">
+      <img src="assets/mountains.webp" alt="">
+    </div>
+
+    <!-- LAYER 3 · CITADEL — arch-gate + stair tower (medium) -->
+    <div class="layer" id="layer-mid">
+      <img src="assets/citadel.webp" alt="">
+      <div class="ground-fill"></div>
+    </div>
+
+    <!-- LAYER 4 · ROCKS — foreground outcrops + staircase (fastest) -->
+    <div class="layer" id="layer-fore">
+      <img src="assets/rocks.webp" alt="">
+      <div class="ground-fill"></div>
+    </div>
+
+    <!-- dusk tint animated over the final scene (see script) -->
+    <div class="dusk" id="dusk"></div>
+  </div>
+</div>
+
+<!-- ##################################################################
+     SCROLL SPACERS — four empty full-height sections that create the
+     scroll distance driving the parallax. Drop content back into any
+     of them whenever you want copy over the art.
+     ################################################################## -->
+<main>
+  <section class="scene"></section>
+  <section class="scene"></section>
+  <section class="scene"></section>
+  <section class="scene"></section>
+</main>
+
+<!-- GSAP core + ScrollTrigger from cdnjs -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+
+<script>
+  gsap.registerPlugin(ScrollTrigger);
+
+  // let ScrollTrigger own the scroll position across reloads
+  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+
+  /* ==========================================================
+     LAYER SPEED TABLE — tweak parallax here.
+     ----------------------------------------------------------
+     yPercent : how far the layer slides (of its OWN height) over
+                the FULL page scroll. More negative = faster =
+                feels closer. Keep |yPercent| under the layer's
+                extra height (e.g. #layer-fore is 145% tall ->
+                45% spare -> stay under ~-30).
+     z        : translateZ in px. Negative = pushed away from the
+                CSS perspective camera. Purely for depth order +
+                subtle perspective divergence.
+     scale    : compensates the shrink caused by negative z, so
+                each layer still fills the viewport.
+                rule of thumb: scale = (perspective - z) / perspective
+                with perspective: 1200px (set on .stage in CSS).
+     origin   : transform origin. For the citadel/rocks layers the
+                Y value is where the plate's ground line sits inside
+                the oversized layer (100vh / layer height), so
+                scaling never lifts the art off the viewport bottom.
+     ========================================================== */
+  const LAYERS = [
+    { sel: '#layer-sky',  yPercent:  -3, z: -600, scale: 1.50, origin: '50% 50%' },
+    { sel: '#layer-far',  yPercent:  -8, z: -350, scale: 1.29, origin: '50% 83%' },
+    { sel: '#layer-mid',  yPercent: -13, z: -150, scale: 1.13, origin: '50% 77%' },
+    { sel: '#layer-fore', yPercent: -22, z:    0, scale: 1.00, origin: '50% 69%' },
+  ];
+
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  LAYERS.forEach(({ sel, yPercent, z, scale, origin }) => {
+    // place the layer in 3D space once; GSAP preserves z/scale
+    // components while it later animates yPercent
+    gsap.set(sel, { z, scale, transformOrigin: origin, force3D: true });
+
+    if (reduceMotion) return;   // static composition for reduced-motion users
+
+    gsap.to(sel, {
+      yPercent,
+      ease: 'none',             // linear: position maps 1:1 to scroll
+      scrollTrigger: {
+        trigger: document.body,
+        start: 'top top',       // begins the moment the page scrolls
+        end: 'bottom bottom',   // ends at the very bottom of the page
+        scrub: 0.6,             // 0 = locked to scroll; >0 adds easing lag
+      },
+    });
+  });
+
+  /* Dusk wash: darkens the whole painting across the final two scenes
+     so the closing CTA feels like nightfall — same art, new mood. */
+  if (!reduceMotion) {
+    gsap.to('#dusk', {
+      opacity: 0.35,
+      ease: 'none',
+      scrollTrigger: {
+        trigger: 'main .scene:nth-child(3)',  // starts at Chapter II
+        start: 'top center',
+        endTrigger: 'main .scene:nth-child(4)',
+        end: 'center center',
+        scrub: true,
+      },
+    });
+
+    // subtle extra push on the foreground for depth (scale only;
+    // origin keeps the ground line pinned to the viewport bottom)
+    gsap.to('#layer-fore', {
+      scale: 1.06,
+      ease: 'none',
+      scrollTrigger: {
+        trigger: document.body,
+        start: 'top top',
+        end: 'bottom bottom',
+        scrub: 0.6,
+      },
+    });
+  }
+
+</script>
+</body>
+</html>

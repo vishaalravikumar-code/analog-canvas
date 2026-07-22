@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ember Mesa — Dolly Variation (scroll into the scene)</title>
+
+<!-- ============================================================
+     EMBER MESA · DOLLY VARIATION
+     ------------------------------------------------------------
+     Same three plates as parallax-poster.html, but scrolling
+     moves the CAMERA FORWARD instead of panning the layers up.
+
+     How it works:
+       Every layer starts at a negative translateZ (pushed away
+       from the CSS perspective camera) with a compensating
+       pre-scale, so frame 1 composes exactly like the flat poster.
+       A single scrubbed timeline then increases each layer's z —
+       nearer layers approach faster, swell past the viewport
+       edges, and fade out as they "pass the camera". The scroll
+       reads as flying INTO the scene: over the rocks, through the
+       citadel gap, out into the moonlit sky.
+
+     Tuning lives in the DOLLY table in the <script> below.
+     ============================================================ -->
+
+<link rel="preload" as="image" href="assets/sky.webp">
+<link rel="preload" as="image" href="assets/citadel.webp">
+<link rel="preload" as="image" href="assets/rocks.webp">
+
+<style>
+  :root {
+    --sky-deep: #1a1f8f;   /* fallback behind the sky image */
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: auto; }
+
+  body {
+    background: var(--sky-deep);
+    overflow-x: hidden;
+  }
+
+  /* ================= FIXED ART STAGE ================= */
+
+  .stage {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    /* the camera. PERSPECTIVE must match the P constant in the
+       script — pre-scales are computed from it. */
+    perspective: 1200px;
+    /* the vanishing point: slightly above center, nudged toward
+       the citadel gap / moon so the fly-through aims there */
+    perspective-origin: 52% 38%;
+    z-index: 0;
+  }
+
+  .layers {
+    position: absolute;
+    inset: 0;
+    transform-style: preserve-3d;   /* keep children in one 3D space */
+  }
+
+  .layer {
+    position: absolute;
+    inset: 0;
+    will-change: transform, opacity;
+    /* scale around the same point the perspective zooms toward, so
+       the pre-scale exactly cancels the initial z push-back */
+    transform-origin: 52% 38%;
+  }
+
+  .layer img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* sky: full layer height at natural aspect, slid sideways so the
+     MOON (at ~89% across the plate) sits dead center; the layer's
+     background color fills the uncovered strip at the right edge */
+  #layer-sky { background: #030ca6; }
+  #layer-sky img {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    height: 100%;
+    width: auto;
+    transform: translateX(-89%);
+    image-rendering: pixelated;   /* keep the pixel-art crunch */
+  }
+
+  /* Mountains: sized by viewport HEIGHT at natural aspect so the
+     summit is never cover-cropped on wide screens. Sits 12vh lower
+     so more sky (and the moon) stays open; on screens wider than
+     the plate, the side edges feather into the sky like haze. */
+  #layer-far img {
+    position: absolute;
+    top: 12vh;
+    left: 50%;
+    height: 100vh;
+    width: auto;
+    transform: translateX(-50%);
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 7%, #000 93%, transparent 100%);
+    mask-image: linear-gradient(90deg, transparent 0, #000 7%, #000 93%, transparent 100%);
+  }
+
+  /* mountains + citadel + rocks: ground line hugs the viewport bottom */
+  #layer-far  img,
+  #layer-mid  img,
+  #layer-fore img { object-position: center bottom; }
+
+  /* ================= SCROLL SPACER ================= */
+  /* Pure scroll runway — the page has no visible content of its
+     own; all motion happens on the fixed stage. */
+  .scroll-space { height: 350vh; }
+</style>
+</head>
+<body>
+
+<!-- Three depth planes, back to front (same plates as the poster). -->
+<div class="stage" aria-hidden="true">
+  <div class="layers">
+    <div class="layer" id="layer-sky"><img  src="assets/sky.webp"       alt=""></div>
+    <div class="layer" id="layer-far"><img  src="assets/mountains.webp" alt=""></div>
+    <div class="layer" id="layer-mid"><img  src="assets/citadel.webp"   alt=""></div>
+    <div class="layer" id="layer-fore"><img src="assets/rocks.webp"   alt=""></div>
+  </div>
+</div>
+
+<div class="scroll-space"></div>
+
+<!-- GSAP core + ScrollTrigger from cdnjs -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+
+<script>
+  gsap.registerPlugin(ScrollTrigger);
+
+  // let ScrollTrigger own the scroll position across reloads
+  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+
+  /* ==========================================================
+     DOLLY TABLE — tweak the fly-through here.
+     ----------------------------------------------------------
+     z0 / z1  : translateZ at scroll start / end (px). The camera
+                sits at z = 0 and P (below) is its focal length.
+                Nearer layers get a bigger z sweep = faster
+                approach. A layer whose z climbs past ~P/2 fills
+                the screen and should fade before the math blows up.
+     fadeAt   : timeline position (0-1) where the layer starts
+                fading out; fadeLen is how much of the timeline the
+                fade occupies. Omit to never fade (the sky stays).
+     drift    : yPercent added across the whole timeline. Positive
+                pushes the layer down as it passes — sells the
+                feeling of flying OVER the foreground.
+     Pre-scale is computed automatically as (P - z0) / P so that
+     frame 1 matches the flat poster exactly.
+     ========================================================== */
+  const P = 1200;   // must match .stage { perspective } in the CSS
+  const DOLLY = [
+    // sky must stay the DEEPEST plane at all times: with preserve-3d
+    // the browser paints by true z-order, and the sky is opaque
+    // sky is "at infinity": the camera moving forward doesn't change
+    // it at all, so the moon never grows (z0 === z1 -> no sweep)
+    { sel: '#layer-sky',  z0: -900, z1: -900 },
+    // mountains are huge and distant -> they grow only slightly
+    // (~8%) over the whole scroll, and never fade — the fly-through
+    // ends floating above them
+    { sel: '#layer-far',  z0: -750, z1: -600 },
+    { sel: '#layer-mid',  z0: -600, z1:  100, fadeAt: 0.82, fadeLen: 0.18, drift: 4 },
+    { sel: '#layer-fore', z0: -100, z1:  700, fadeAt: 0.52, fadeLen: 0.28, drift: 14 },
+  ];
+
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // one scrubbed timeline; every position below is a 0-1 fraction of it
+  const tl = reduceMotion ? null : gsap.timeline({
+    defaults: { ease: 'none' },
+    scrollTrigger: {
+      trigger: document.body,
+      start: 'top top',
+      end: 'bottom bottom',
+      scrub: 0.5,   // 0 = locked to scroll; >0 adds easing lag
+    },
+  });
+
+  DOLLY.forEach(({ sel, z0, z1, fadeAt, fadeLen, drift }) => {
+    // park the layer at its start depth, pre-scaled so it composes
+    // exactly like the flat poster on frame 1
+    gsap.set(sel, { z: z0, scale: (P - z0) / P, force3D: true });
+
+    if (reduceMotion) return;   // static composition for reduced-motion users
+
+    // the dolly move: linear z sweep over the full timeline.
+    // (linear z = accelerating apparent growth near the camera,
+    // which is exactly how a real fly-by feels)
+    tl.to(sel, { z: z1, duration: 1 }, 0);
+
+    if (drift) tl.to(sel, { yPercent: drift, duration: 1 }, 0);
+
+    // fade the layer out as it passes the camera
+    if (fadeAt !== undefined) {
+      tl.to(sel, { opacity: 0, duration: fadeLen, ease: 'power1.in' }, fadeAt);
+    }
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ember Mesa — Mouse Variation (pointer parallax)</title>
+
+<!-- ============================================================
+     EMBER MESA · MOUSE VARIATION
+     ------------------------------------------------------------
+     A single full-screen scene (the mesa + tarot card). No scroll.
+     It sways with the pointer: layers shift horizontally by a few
+     pixels, each by a different amount, keyed to how far the mouse
+     sits from the screen's center.
+
+       mouse left  -> ziggurat follows left, hills counter-move right
+       mouse right -> mirrored
+       mouse center / leaves the window -> everything eases home
+
+     The offsets are deliberately small — they should read as the
+     scene breathing, not the scene chasing the cursor. Each layer
+     carries a slight scale bleed so its edges never pull into view.
+
+     Tuning lives in the SWAY table in the <script> below.
+     ============================================================ -->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jacquard+12&family=VT323&display=swap" rel="stylesheet">
+
+<link rel="preload" as="image" href="assets/sky-sun.webp">
+<link rel="preload" as="image" href="assets/mountains-gold.webp">
+<link rel="preload" as="image" href="assets/ziggurat.webp">
+<link rel="preload" as="image" href="assets/Card_01.PNG">
+<link rel="preload" as="image" href="assets/Card_02.PNG">
+
+<style>
+  :root {
+    --sky-deep: #1a1f8f;   /* fallback behind the sky image */
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    height: 100%;
+    overflow: hidden;          /* single fixed scene, nothing scrolls */
+    background: var(--sky-deep);
+  }
+
+  /* ================= THE ART STAGE ================= */
+  /* Plain 2D stacking — no perspective needed, DOM order back to
+     front: sky (sun), hills, ziggurat. */
+
+  .stage {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+  }
+
+  .layer {
+    position: absolute;
+    inset: 0;
+    will-change: transform;
+  }
+
+  .layer img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* sky: full height at natural aspect. The SUN sits at ~50% across
+     the plate, so it's already centered — no sideways slide. The
+     layer's warm fill covers any strip the plate misses on ultra-wide
+     screens. Smooth gradient art, so no pixelation. */
+  #layer-sky { background: #f9b613; left: -12px; right: -12px; }
+  #layer-sky img {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    height: 100%;
+    width: auto;
+    transform: translateX(-50%);
+  }
+
+  /* mountains: a horizon panorama (golden hills across the bottom
+     third of the plate, transparent sky above). Fit full-width and
+     anchored low so the hills sit at the horizon behind the ruins;
+     side edges feather into the sun-sky like haze. */
+  #layer-far img {
+    position: absolute;
+    bottom: 2vh;
+    left: 50%;
+    width: 102%;
+    height: auto;
+    transform: translateX(-50%);
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 8%, #000 92%, transparent 100%);
+    mask-image: linear-gradient(90deg, transparent 0, #000 8%, #000 92%, transparent 100%);
+  }
+
+  /* foreground: the golden ziggurat — one centered structure (spire
+     at top, wide tiered base below, misty ground). Fit by WIDTH so
+     the tiered base + ground span edge to edge; height follows the
+     natural aspect. Anchored to the bottom, centered. On 16:10-ish
+     screens this is also >=100vh tall, so the spire reaches near the
+     top; the card sits in front of its stairway like a gate. */
+  #layer-fore img {
+    position: absolute;
+    bottom: -100px;
+    left: 50%;
+    width: 100%;
+    height: auto;
+    transform: translateX(-50%);
+  }
+
+  /* Bleed: moving layers are pre-scaled a touch past the viewport so
+     a few pixels of sway never pulls an edge into view. The GSAP
+     x-tweens preserve this scale. */
+  #layer-far  { scale: 1.03; }
+  #layer-fore { scale: 1.06; }
+
+  /* ---------- Tarot card (ported from Program 004) ---------- */
+  /* No wall behind the card here, so the light-projected cast shadow
+     stays behind in Program 004 — the drop-shadow grounds it instead. */
+
+  /* perspective stage: centres the card and gives it 3D depth.
+     GSAP owns its centering transform (xPercent/yPercent) so the
+     sway x composes with it — see the script below. */
+  .card-stage {
+    position: fixed;
+    left: 50%;
+    top: 56%;
+    z-index: 20;   /* above every scene layer */
+    height: min(64vh, 150vw);
+    aspect-ratio: 1024 / 1536;   /* matches the card plate exactly */
+    perspective: 1000px;
+    will-change: transform;
+  }
+
+  /* the card itself — JS tilts it toward the cursor (rotateX/Y + scale) */
+  .card-float {
+    position: absolute;
+    inset: 0;
+    transform-style: preserve-3d;
+    will-change: transform;
+    filter: drop-shadow(0 18px 28px rgba(5, 4, 25, 0.55));
+  }
+
+  .card-rim {
+    position: absolute;
+    inset: 0;
+    border-radius: 22px;
+    overflow: hidden;
+  }
+
+  .card-rim img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: saturate(1.05) contrast(1.03);
+    image-rendering: pixelated;   /* the card face is pixel art */
+  }
+
+  .card-image {
+    position: absolute;
+    inset: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .card-image-1 {
+    opacity: 1;
+  }
+
+  .card-image-2 {
+    opacity: 0;
+  }
+
+  /* name lockup in the red field at the top of the card */
+  .card-title {
+    position: absolute;
+    top: 5%;
+    left: 7%;
+    right: 7%;
+    text-align: left;
+    color: #f3e9db;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    pointer-events: none;
+    text-shadow: 0 1px 12px rgba(60, 0, 0, 0.35);
+  }
+
+  .card-title h1 {
+    font-family: "Jacquard 12", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: clamp(1.8rem, 5.2vh, 3rem);
+    font-weight: 400;
+    line-height: 0.95;
+    letter-spacing: 0.02em;
+  }
+
+  /* name, positioned above the role */
+  /* position line, centered along the bottom edge of the card */
+  .card-role {
+    position: absolute;
+    bottom: 4%;
+    left: 7%;
+    right: 7%;
+    text-align: center;
+    color: #f3e9db;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: clamp(0.5rem, 1.3vh, 0.75rem);
+    font-weight: 500;
+    letter-spacing: 0.42em;
+    /* offset the trailing tracking so it optically centers */
+    margin-right: -0.42em;
+    text-transform: uppercase;
+    opacity: 0.9;
+    pointer-events: none;
+    text-shadow: 0 1px 10px rgba(0, 0, 0, 0.55);
+    line-height: 1.6;
+  }
+
+  /* ---------- ancient narrator ---------- */
+  /* Sierra-style narration band: one sentence at a time, typed and
+     erased by the script below. Sits low over the foreground rocks,
+     under the card, quiet enough to live inside the artwork. */
+  #narration {
+    position: fixed;
+    bottom: 4vh;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 19;                 /* over the scene, under the card */
+    max-width: min(88vw, 46rem);
+    text-align: center;
+    font-family: 'VT323', 'Courier New', monospace;
+    font-size: clamp(1.15rem, 2.6vh, 1.6rem);
+    letter-spacing: 0.05em;
+    color: #f2e9c8;                              /* aged parchment cream */
+    text-shadow: 0 1px 0 rgba(12, 8, 4, 0.9);    /* ink grounding */
+    pointer-events: none;
+    white-space: nowrap;         /* one line, like a caption band */
+    /* black dialog box, like an old adventure game's text panel */
+    background: rgba(4, 3, 10, 0.78);
+    padding: 0.35em 0.75em 0.4em;
+    border: 1px solid rgba(242, 233, 200, 0.18);
+  }
+
+  /* small screens: let long sentences wrap instead of overflowing */
+  @media (max-width: 640px) {
+    #narration { white-space: normal; max-width: 84vw; min-height: 2.6em; }
+  }
+
+  /* blinking block cursor — steps() so it snaps like a real DOS cursor */
+  #narration .cursor {
+    display: inline-block;
+    margin-left: 0.08em;
+    animation: narrator-blink 1.06s steps(2, jump-none) infinite;
+  }
+  @keyframes narrator-blink {
+    0%   { opacity: 1; }
+    100% { opacity: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #narration .cursor { animation: none; }
+  }
+
+  /* sound toggle (ported from Program 004; tinted for the blue night) */
+  #sound-toggle {
+    position: fixed;
+    right: 22px;
+    bottom: 22px;
+    z-index: 30;
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    border: 1px solid rgba(243, 233, 219, 0.25);
+    background: rgba(5, 4, 25, 0.45);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    color: #f3e9db;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    transition: transform 0.2s ease, background 0.2s ease, opacity 0.2s ease;
+    opacity: 0.7;
+  }
+  #sound-toggle:hover { opacity: 1; transform: scale(1.06); }
+  #sound-toggle svg { width: 20px; height: 20px; display: block; }
+  #sound-toggle .icon-on { display: none; }
+  #sound-toggle.playing .icon-on { display: block; }
+  #sound-toggle.playing .icon-off { display: none; }
+  /* soft pulse ring while playing */
+  #sound-toggle.playing {
+    background: rgba(10, 12, 60, 0.6);
+    box-shadow: 0 0 0 0 rgba(243, 233, 219, 0.35);
+    animation: sound-pulse 2.4s ease-out infinite;
+  }
+  @keyframes sound-pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(243, 233, 219, 0.30); }
+    70%  { box-shadow: 0 0 0 14px rgba(243, 233, 219, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(243, 233, 219, 0); }
+  }
+</style>
+</head>
+<body>
+
+<!-- Four depth planes, back to front (same plates as the poster). -->
+<div class="stage" aria-hidden="true">
+  <div class="layer" id="layer-sky"><img  src="assets/sky-sun.webp"   alt=""></div>
+  <div class="layer" id="layer-far"><img  src="assets/mountains-gold.webp" alt=""></div>
+  <div class="layer" id="layer-fore"><img src="assets/ziggurat.webp" alt=""></div>
+</div>
+
+<!-- Tarot card — nearest "layer": sways the most and tilts on hover. -->
+<div class="card-stage">
+  <div class="card-float">
+    <div class="card-rim">
+      <img class="card-image card-image-1" src="assets/Card_01.PNG" alt="Tarot card">
+      <img class="card-image card-image-2" src="assets/Card_02.PNG" alt="Alternate card">
+      <div class="card-title">
+      </div>
+      <div class="card-role">Vishaal Ravikumar<br>Sr. Product Designer</div>
+    </div>
+  </div>
+</div>
+
+<!-- the ruins quietly telling their story: types, rests, erases, forever -->
+<div id="narration" aria-live="polite"><span class="text"></span><span class="cursor">█</span></div>
+
+<button id="sound-toggle" aria-label="Toggle ambient sound" title="Ambient sound">
+  <svg class="icon-off" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M11 5 6 9H3v6h3l5 4V5Z"/><line x1="22" y1="9" x2="16" y2="15"/>
+    <line x1="16" y1="9" x2="22" y2="15"/>
+  </svg>
+  <svg class="icon-on" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/>
+    <path d="M18.5 6a8 8 0 0 1 0 12"/>
+  </svg>
+</button>
+
+<!-- GSAP core from cdnjs (drives the pointer-sway tweens) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+
+<script>
+  /* ==========================================================
+     SWAY TABLE — tweak the pointer parallax here.
+     ----------------------------------------------------------
+     x : max horizontal shift in px when the mouse reaches the
+         screen edge. Positive = moves WITH the mouse, negative
+         = counter-moves. Keep |x| inside the layer's scale bleed
+         (see CSS) so edges never show.
+     ========================================================== */
+  const SWAY = [
+    { sel: '#layer-sky',  x:  -6 },   // moon counter-drifts, gentlest
+    { sel: '#layer-far',  x: -10 },   // hills counter-move
+    { sel: '#layer-fore', x:  30 },   // the ziggurat follows the mouse
+    { sel: '.card-stage', x:  48 },   // the card is nearest of all
+  ];
+
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // GSAP owns the card stage's centering so the sway x composes with
+  // it instead of overwriting the CSS translate(-50%, -50%)
+  gsap.set('.card-stage', { xPercent: -50, yPercent: -50 });
+
+  if (!reduceMotion) {
+    // one lazy tween per layer: quickTo re-targets smoothly on every
+    // mousemove, giving the drift its floaty, eased follow
+    const movers = SWAY
+      .filter(l => l.x !== 0)
+      .map(l => ({ amp: l.x, to: gsap.quickTo(l.sel, 'x', { duration: 0.9, ease: 'power3.out' }) }));
+
+    window.addEventListener('mousemove', (e) => {
+      // -1 at the left edge, 0 at center, +1 at the right edge
+      const nx = (e.clientX / window.innerWidth - 0.5) * 2;
+      movers.forEach(m => m.to(nx * m.amp));
+    });
+
+    // pointer gone -> everything eases back to the resting frame
+    document.documentElement.addEventListener('mouseleave', () => {
+      movers.forEach(m => m.to(0));
+    });
+  }
+</script>
+
+<script>
+  /* The ancient narrator — looping adventure-game narration.
+     One sentence at a time: typed character-by-character at a
+     slightly irregular, human pace; held for ~3s; erased; then the
+     next line begins. setTimeout-driven (no rAF), deliberately slow
+     and contemplative, like the opening crawl of a forgotten
+     Sierra game. */
+  (function () {
+    var el = document.querySelector('#narration .text');
+    if (!el) return;
+
+    var LINES = [
+      'Every traveler arrives with a destination.',
+      'Few arrive with a map.',
+      "I've spent my career building those maps.",
+      'Helping people find the path forward—',
+      'One interaction at a time.',
+      'The road continues...',
+    ];
+
+    // reduced motion: rest on the first line, no loop
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      el.textContent = LINES[0];
+      return;
+    }
+
+    var TYPE_BASE = 72;      // ms per character, before humanizing
+    var ERASE_BASE = 34;     // erasing is quicker, like a scribe striking through
+    var HOLD = 3000;         // rest on the finished sentence
+    var BREATH = 500;        // beat of silence before the next line
+
+    // organic keystroke timing: jitter on every character, a longer
+    // hesitation after punctuation and (sometimes) between words
+    function typeDelay(ch, next) {
+      var d = TYPE_BASE + (Math.random() * 90 - 30);
+      if (',;—'.indexOf(ch) !== -1) d += 260;
+      if ('.!?'.indexOf(ch) !== -1) d += 340;
+      if (next === ' ' && Math.random() < 0.18) d += 140;   // occasional thought
+      return Math.max(28, d);
+    }
+
+    var line = 0;
+
+    function typeChar(i) {
+      var text = LINES[line];
+      el.textContent = text.slice(0, i);
+      if (i < text.length) {
+        setTimeout(function () { typeChar(i + 1); },
+                   typeDelay(text[i - 1] || '', text[i]));
+      } else {
+        setTimeout(eraseChar.bind(null, text.length), HOLD);
+      }
+    }
+
+    function eraseChar(i) {
+      var text = LINES[line];
+      el.textContent = text.slice(0, i);
+      if (i > 0) {
+        setTimeout(function () { eraseChar(i - 1); },
+                   ERASE_BASE + Math.random() * 28);
+      } else {
+        line = (line + 1) % LINES.length;
+        setTimeout(function () { typeChar(1); }, BREATH);
+      }
+    }
+
+    setTimeout(function () { typeChar(1); }, 1200);   // let the scene land first
+  })();
+</script>
+
+<script>
+  /* Tilted card (ported from Program 004 / React Bits "TiltedCard").
+     The card tilts toward the cursor (rotateX/rotateY) and scales up on
+     hover, on critically-damped springs matching motion/react's
+     {stiffness:100, damping:30, mass:2}. Runs on the inner .card-float,
+     so it composes freely with the GSAP sway on .card-stage. */
+  (function () {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    var stage = document.querySelector('.card-stage');
+    var card = document.querySelector('.card-float');
+
+    var ROTATE_AMPLITUDE = 14;
+    var SCALE_ON_HOVER = 1.06;
+
+    // spring channels (motion/react physical spring: a = (-k·x - c·v)/m)
+    function S(x) { return { x: x, v: 0, t: x }; }
+    var rx = S(0), ry = S(0), sc = S(1);
+    var K = 100, C = 30, M = 2;
+    function integrate(s, dt) {
+      var a = (-K * (s.x - s.t) - C * s.v) / M;
+      s.v += a * dt; s.x += s.v * dt;
+    }
+
+    stage.addEventListener('mousemove', function (e) {
+      var r = stage.getBoundingClientRect();
+      var ox = e.clientX - r.left - r.width / 2;
+      var oy = e.clientY - r.top - r.height / 2;
+      rx.t = (oy / (r.height / 2)) * -ROTATE_AMPLITUDE;
+      ry.t = (ox / (r.width / 2)) * ROTATE_AMPLITUDE;
+    });
+    stage.addEventListener('mouseenter', function () { sc.t = SCALE_ON_HOVER; });
+    stage.addEventListener('mouseleave', function () {
+      sc.t = 1; rx.t = 0; ry.t = 0;
+    });
+
+    var last = performance.now();
+    function frame(now) {
+      var dt = Math.min((now - last) / 1000, 0.033); last = now;
+      integrate(rx, dt); integrate(ry, dt); integrate(sc, dt);
+
+      card.style.transform =
+        'rotateX(' + rx.x.toFixed(3) + 'deg) rotateY(' + ry.x.toFixed(3) +
+        'deg) scale(' + sc.x.toFixed(4) + ')';
+
+      requestAnimationFrame(frame);
+    }
+
+    // render one pose immediately (works even where rAF is throttled)
+    frame(performance.now());
+    requestAnimationFrame(frame);
+  })();
+</script>
+
+<script>
+  /* Lenticular card effect - shows Card_02 fully at edges, blends in middle */
+  (function () {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    var rim = document.querySelector('.card-rim');
+    var img1 = document.querySelector('.card-image-1');
+    var img2 = document.querySelector('.card-image-2');
+
+    if (!rim || !img1 || !img2) return;
+
+    rim.addEventListener('mousemove', function (e) {
+      var r = rim.getBoundingClientRect();
+      if (r.width === 0) return;
+
+      var nx = (e.clientX - r.left) / r.width;
+      var opacity2 = 0;
+
+      if (nx < 0.25) {
+        opacity2 = 1;
+      } else if (nx < 0.33) {
+        opacity2 = 1 - ((nx - 0.25) / 0.08);
+      } else if (nx < 0.67) {
+        opacity2 = 0;
+      } else if (nx < 0.75) {
+        opacity2 = (nx - 0.67) / 0.08;
+      } else {
+        opacity2 = 1;
+      }
+
+      img1.style.opacity = (1 - opacity2).toFixed(2);
+      img2.style.opacity = opacity2.toFixed(2);
+    });
+
+    rim.addEventListener('mouseleave', function () {
+      img1.style.opacity = '1';
+      img2.style.opacity = '0';
+    });
+  })();
+</script>
+
+<script>
+  /* Dark-fantasy analog synth (ported from Program 004) — arpeggiated
+     suspended chords, 1970s progressive feel. Pure Web Audio, no
+     dependencies. Detuned-saw voices through a resonant low-pass with
+     per-note pluck envelopes; an 8th-note arpeggiator cycles suspended
+     voicings over an 8-bar Aeolian/harmonic-minor progression, under a
+     low drone, slow filter breathing, tape delay and a generated
+     convolution reverb. Starts on user gesture. */
+  (function () {
+    var btn = document.getElementById('sound-toggle');
+    var ctx = null, master = null, tone = null, lfoDepth = null,
+        delaySend = null, revSend = null;
+    var started = false, playing = false, timer = null;
+    var BPM = 90, stepDur = 60 / BPM / 2;   // eighth notes
+    var step = 0, nextTime = 0;
+
+    function mtof(m) { return 440 * Math.pow(2, (m - 69) / 12); }
+
+    // suspended voicings (no thirds) — 6-note ascending arps, ~2 octaves.
+    // roots walk a dark A-minor path with a harmonic-minor (E major) cadence.
+    var chords = [
+      { arp: [45, 50, 57, 62, 69, 74], bass: 33 }, // D pentatonic - open 5ths
+      { arp: [47, 52, 59, 64, 71, 76], bass: 35 }, // E pentatonic - open 5ths
+      { arp: [43, 48, 55, 60, 67, 72], bass: 31 }, // B pentatonic - open 5ths
+      { arp: [45, 50, 57, 62, 69, 74], bass: 33 }, // D pentatonic - open 5ths
+      { arp: [47, 52, 59, 64, 71, 76], bass: 35 }, // E pentatonic - open 5ths
+      { arp: [43, 48, 55, 60, 67, 72], bass: 31 }, // B pentatonic - open 5ths
+      { arp: [45, 50, 57, 62, 69, 74], bass: 33 }, // D pentatonic - open 5ths
+      { arp: [50, 55, 62, 67, 74, 79], bass: 38 }  // D pentatonic cadence - higher
+    ];
+    var STEPS_PER_CHORD = 8; // one bar
+
+    // soft-clip curve for mild analog saturation (tanh, normalised)
+    function makeDriveCurve(k) {
+      var n = 1024, curve = new Float32Array(n), t = Math.tanh(k);
+      for (var i = 0; i < n; i++) {
+        var x = (i / (n - 1)) * 2 - 1;
+        curve[i] = Math.tanh(k * x) / t;
+      }
+      return curve;
+    }
+
+    function makeReverbIR(seconds, decay) {
+      var rate = ctx.sampleRate, len = Math.floor(rate * seconds);
+      var buf = ctx.createBuffer(2, len, rate);
+      for (var ch = 0; ch < 2; ch++) {
+        var d = buf.getChannelData(ch);
+        for (var i = 0; i < len; i++)
+          d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay);
+      }
+      return buf;
+    }
+
+    function initAudio() {
+      ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+      master = ctx.createGain(); master.gain.value = 0.0001;
+      master.connect(ctx.destination);
+
+      // mild analog saturation, then a gentle tone-shaping low-pass
+      var drive = ctx.createWaveShaper();
+      drive.curve = makeDriveCurve(2.4); drive.oversample = '2x';
+      drive.connect(master);
+      tone = ctx.createBiquadFilter(); tone.type = 'lowpass';
+      tone.frequency.value = 4600; tone.Q.value = 0.6;
+      tone.connect(drive);
+
+      // tape-style feedback delay (dotted-eighth-ish), warm & deep
+      var delay = ctx.createDelay(1.0);
+      delay.delayTime.value = stepDur * 1.5;
+      var fb = ctx.createGain(); fb.gain.value = 0.46;
+      var dTone = ctx.createBiquadFilter(); dTone.type = 'lowpass'; dTone.frequency.value = 2400;
+      var dSat = ctx.createWaveShaper(); dSat.curve = makeDriveCurve(1.6);  // tape grit in the repeats
+      delay.connect(dSat); dSat.connect(dTone); dTone.connect(fb); fb.connect(delay);
+      delay.connect(tone);
+      delaySend = ctx.createGain(); delaySend.gain.value = 0.34; delaySend.connect(delay);
+
+      // tape wow & flutter — slowly modulate the delay time
+      var flutter = ctx.createOscillator(); flutter.type = 'sine'; flutter.frequency.value = 0.9;
+      var flutterAmt = ctx.createGain(); flutterAmt.gain.value = 0.0016;
+      flutter.connect(flutterAmt); flutterAmt.connect(delay.delayTime); flutter.start();
+      var wow = ctx.createOscillator(); wow.type = 'sine'; wow.frequency.value = 0.13;
+      var wowAmt = ctx.createGain(); wowAmt.gain.value = 0.0032;
+      wow.connect(wowAmt); wowAmt.connect(delay.delayTime); wow.start();
+
+      // convolution reverb — long tail
+      var conv = ctx.createConvolver(); conv.buffer = makeReverbIR(3.6, 2.3);
+      var revReturn = ctx.createGain(); revReturn.gain.value = 0.62;
+      conv.connect(revReturn); revReturn.connect(tone);
+      revSend = ctx.createGain(); revSend.gain.value = 0.42; revSend.connect(conv);
+
+      // slow filter "breathing" LFO shared by all voices
+      var lfo = ctx.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 0.05;
+      lfoDepth = ctx.createGain(); lfoDepth.gain.value = 260;
+      lfo.connect(lfoDepth); lfo.start();
+    }
+
+    function voice(midi, time, dur, vel, opts) {
+      opts = opts || {};
+      var f = mtof(midi);
+      var o1 = ctx.createOscillator(), o2 = ctx.createOscillator(),
+          sub = ctx.createOscillator();
+      o1.type = 'sawtooth'; o2.type = 'sawtooth'; sub.type = 'triangle';
+      o1.frequency.value = f; o2.frequency.value = f; sub.frequency.value = f / 2;
+      o1.detune.value = -7; o2.detune.value = 7;   // analog width
+
+      var filt = ctx.createBiquadFilter(); filt.type = 'lowpass';
+      filt.Q.value = opts.q != null ? opts.q : 7;
+      lfoDepth.connect(filt.frequency);            // shared breathing
+
+      var amp = ctx.createGain(); amp.gain.value = 0;
+      o1.connect(filt); o2.connect(filt); sub.connect(filt);
+      filt.connect(amp);
+      amp.connect(tone);
+      if (opts.send !== false) { amp.connect(delaySend); amp.connect(revSend); }
+
+      var base = opts.base != null ? opts.base : 300;
+      var peak = base + (opts.peak != null ? opts.peak : 2600) * vel;
+      filt.frequency.setValueAtTime(base, time);
+      filt.frequency.linearRampToValueAtTime(peak, time + 0.02);
+      filt.frequency.exponentialRampToValueAtTime(base + 120, time + dur * 0.9);
+
+      var atk = opts.atk != null ? opts.atk : 0.008;
+      amp.gain.setValueAtTime(0, time);
+      amp.gain.linearRampToValueAtTime(vel, time + atk);
+      amp.gain.exponentialRampToValueAtTime(0.0001, time + dur);
+
+      [o1, o2, sub].forEach(function (o) { o.start(time); o.stop(time + dur + 0.05); });
+    }
+
+    function scheduleStep(s, time) {
+      var ci = Math.floor(s / STEPS_PER_CHORD) % chords.length;
+      var local = s % STEPS_PER_CHORD;
+      var chord = chords[ci];
+
+      // arpeggio note (pattern length 6 vs 8-step bar → gentle phasing)
+      var note = chord.arp[s % chord.arp.length];
+      var accent = (local % 2 === 0);
+      voice(note, time, stepDur * 1.9, accent ? 0.34 : 0.22,
+            { base: 300, peak: 2700, q: 8 });
+
+      // low drone + pad at each bar change
+      if (local === 0) {
+        voice(chord.bass, time, stepDur * 8 * 1.02, 0.5,
+              { base: 160, peak: 500, q: 3, atk: 0.05, send: false });
+        // soft sustained fifth pad, heavy in the reverb
+        voice(chord.bass + 19, time, stepDur * 8 * 1.02, 0.10,
+              { base: 400, peak: 700, q: 2, atk: 0.6 });
+      }
+    }
+
+    function scheduler() {
+      while (nextTime < ctx.currentTime + 0.12) {
+        scheduleStep(step, nextTime);
+        step++; nextTime += stepDur;
+      }
+    }
+
+    function start() {
+      if (!started) { initAudio(); started = true; }
+      if (ctx.state === 'suspended') ctx.resume();
+      step = 0; nextTime = ctx.currentTime + 0.08;
+      master.gain.cancelScheduledValues(ctx.currentTime);
+      master.gain.setValueAtTime(Math.max(master.gain.value, 0.0001), ctx.currentTime);
+      master.gain.exponentialRampToValueAtTime(0.78, ctx.currentTime + 1.5);
+      timer = setInterval(scheduler, 25);
+      playing = true; btn.classList.add('playing');
+    }
+
+    function stop() {
+      if (!ctx) return;
+      master.gain.cancelScheduledValues(ctx.currentTime);
+      master.gain.setValueAtTime(master.gain.value, ctx.currentTime);
+      master.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.6);
+      clearInterval(timer); timer = null;
+      playing = false; btn.classList.remove('playing');
+    }
+
+    btn.addEventListener('click', function () {
+      if (playing) stop(); else start();
+    });
+    // expose for quick diagnostics
+    window.__synth = { start: start, stop: stop, get state(){ return ctx && ctx.state; } };
+  })();
+</script>
+</body>
+</html>

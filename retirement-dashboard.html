@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Retirement City Comparison — Bentonville · Chennai · Zagreb</title>
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --panel: #ffffff;
+    --ink: #1f2937;
+    --ink-soft: #6b7280;
+    --line: #e5e7eb;
+    --accent: #2563eb;
+    --c-bent: #2563eb;   /* blue */
+    --c-chen: #d97706;   /* amber */
+    --c-zag:  #0d9488;   /* teal */
+    --good: #15803d;
+    --good-bg: #dcfce7;
+    --bad: #b91c1c;
+    --bad-bg: #fee2e2;
+    --radius: 10px;
+    font-size: 15px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.45;
+  }
+  header.app {
+    padding: 20px 28px 12px;
+  }
+  header.app h1 { margin: 0 0 4px; font-size: 1.35rem; font-weight: 650; }
+  header.app p { margin: 0; color: var(--ink-soft); font-size: .9rem; max-width: 70ch; }
+
+  .layout { display: flex; gap: 20px; padding: 14px 28px 40px; align-items: flex-start; }
+  @media (max-width: 980px) { .layout { flex-direction: column; } .controls { position: static !important; width: 100% !important; } }
+
+  /* ---- Controls sidebar ---- */
+  .controls {
+    width: 300px; flex: 0 0 300px; position: sticky; top: 14px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 16px; max-height: calc(100vh - 28px); overflow-y: auto;
+  }
+  .controls h2 { font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); margin: 18px 0 8px; }
+  .controls h2:first-child { margin-top: 0; }
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: .82rem; font-weight: 550; margin-bottom: 3px; }
+  .field .hint { font-size: .74rem; color: var(--ink-soft); margin-top: 2px; }
+  .field input[type=number], .field select {
+    width: 100%; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px;
+    font-size: .9rem; font-family: inherit; background: #fff; color: var(--ink);
+  }
+  .field input[type=range] { width: 100%; accent-color: var(--accent); }
+  .range-val { font-variant-numeric: tabular-nums; font-weight: 650; color: var(--accent); }
+  .duo { display: flex; gap: 8px; }
+  .duo .field { flex: 1; }
+  .toggle-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .toggle-row span.city { font-size: .84rem; font-weight: 550; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+  .seg button {
+    border: 0; background: #fff; padding: 4px 10px; font-size: .78rem; cursor: pointer; color: var(--ink-soft);
+    font-family: inherit;
+  }
+  .seg button.on { background: var(--accent); color: #fff; }
+  .seg3 button.on { background: var(--ink); }
+
+  /* ---- Main ---- */
+  .main { flex: 1; min-width: 0; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; margin-bottom: 18px; }
+  .card h2 { margin: 0 0 10px; font-size: 1.02rem; font-weight: 650; }
+  .card .sub { color: var(--ink-soft); font-size: .82rem; margin: -6px 0 12px; }
+
+  /* summary strip */
+  .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 18px; }
+  .sum-city { background: var(--panel); border: 1px solid var(--line); border-top: 4px solid var(--ink); border-radius: var(--radius); padding: 14px 16px; }
+  .sum-city.bent { border-top-color: var(--c-bent); }
+  .sum-city.chen { border-top-color: var(--c-chen); }
+  .sum-city.zag  { border-top-color: var(--c-zag); }
+  .sum-city h3 { margin: 0; font-size: .95rem; }
+  .sum-city .flag { font-size: .78rem; color: var(--ink-soft); margin-bottom: 8px; }
+  .sum-city .big { font-size: 1.45rem; font-weight: 700; font-variant-numeric: tabular-nums; margin: 2px 0 0; }
+  .sum-city .big small { font-size: .75rem; font-weight: 450; color: var(--ink-soft); }
+  .badge { display: inline-block; padding: 2px 9px; border-radius: 99px; font-size: .74rem; font-weight: 650; margin-top: 8px; }
+  .badge.ok { background: var(--good-bg); color: var(--good); }
+  .badge.short { background: var(--bad-bg); color: var(--bad); }
+  .sum-city .mini { font-size: .77rem; color: var(--ink-soft); margin-top: 6px; }
+  @media (max-width: 780px) { .summary { grid-template-columns: 1fr; } }
+
+  /* comparison table */
+  table.cmp { width: 100%; border-collapse: collapse; font-size: .87rem; }
+  table.cmp th, table.cmp td { padding: 8px 10px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); }
+  table.cmp thead th { position: sticky; top: 0; background: var(--panel); z-index: 2; border-bottom: 2px solid var(--ink); font-size: .9rem; }
+  table.cmp thead th .dot { display: inline-block; width: 10px; height: 10px; border-radius: 99px; margin-right: 6px; }
+  table.cmp td.rowlabel { width: 22%; color: var(--ink-soft); font-weight: 550; font-size: .8rem; }
+  table.cmp td.num { font-variant-numeric: tabular-nums; }
+  table.cmp td .loc { display: block; color: var(--ink-soft); font-size: .74rem; }
+  table.cmp td .note { display: block; color: var(--ink-soft); font-size: .76rem; margin-top: 3px; line-height: 1.4; }
+  table.cmp tr.section td {
+    background: #eef1f5; font-weight: 700; font-size: .78rem; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--ink); border-bottom: none; padding: 7px 10px;
+  }
+  table.cmp tr.total td { font-weight: 700; background: #fafbfc; }
+  .yes { color: var(--good); font-weight: 700; }
+  .no  { color: var(--bad); font-weight: 700; }
+
+  /* chart */
+  #chartWrap { position: relative; }
+  canvas { width: 100%; height: auto; display: block; }
+  .legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: .78rem; color: var(--ink-soft); margin-top: 8px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 18px; height: 3px; border-radius: 2px; display: inline-block; }
+  .legend i.dash { height: 0; border-top: 3px dashed; width: 18px; }
+
+  /* assumptions */
+  details.assump { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 0; }
+  details.assump summary {
+    cursor: pointer; padding: 14px 18px; font-weight: 650; font-size: .95rem; list-style: none;
+  }
+  details.assump summary::before { content: "▸ "; color: var(--ink-soft); }
+  details.assump[open] summary::before { content: "▾ "; }
+  .assump-body { padding: 0 18px 18px; }
+  .assump-body h3 { font-size: .85rem; margin: 18px 0 6px; }
+  .assump-body p, .assump-body li { font-size: .8rem; color: var(--ink-soft); }
+  table.atab { width: 100%; border-collapse: collapse; font-size: .78rem; }
+  table.atab th, table.atab td { padding: 5px 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
+  table.atab input {
+    width: 90px; padding: 3px 6px; border: 1px solid var(--line); border-radius: 5px; font-size: .78rem;
+    font-variant-numeric: tabular-nums; font-family: inherit;
+  }
+  table.atab td.src { color: var(--ink-soft); font-size: .72rem; max-width: 340px; }
+  .footnote { font-size: .75rem; color: var(--ink-soft); margin-top: 14px; border-top: 1px solid var(--line); padding-top: 10px; }
+</style>
+</head>
+<body>
+
+<header class="app">
+  <h1>Retirement City Comparison <span style="font-size:.65rem;font-weight:450;color:#9ca3af;vertical-align:middle">v1.2</span></h1>
+  <p>Bentonville (USA) · Chennai (India) · Zagreb (Croatia). Adjust the levers on the left — every number, the chart, and the on-track verdicts recalculate live. All figures in USD (local currency alongside). Estimates only; see Assumptions &amp; Sources at the bottom.</p>
+</header>
+
+<div class="layout">
+
+  <!-- ============ CONTROLS ============ -->
+  <aside class="controls">
+    <h2>You &amp; your timeline</h2>
+    <div class="duo">
+      <div class="field">
+        <label for="curAge">Current age</label>
+        <input type="number" id="curAge" min="18" max="80" value="40">
+      </div>
+      <div class="field">
+        <label>Retire at <span class="range-val" id="retAgeVal">60</span></label>
+        <input type="range" id="retAge" min="40" max="70" value="60">
+      </div>
+    </div>
+
+    <h2>Family</h2>
+    <div class="duo">
+      <div class="field">
+        <label for="adults">Adults</label>
+        <input type="number" id="adults" min="1" max="6" value="2">
+      </div>
+      <div class="field">
+        <label for="children">Children</label>
+        <input type="number" id="children" min="0" max="6" value="1">
+      </div>
+    </div>
+    <div class="hint field" style="font-size:.74rem;color:var(--ink-soft)">Children add schooling + healthcare costs; family ≥ 3 uses 3-bedroom housing.</div>
+
+    <h2>Housing per city</h2>
+    <div class="toggle-row"><span class="city">Bentonville</span>
+      <span class="seg" data-own="bentonville"><button data-v="rent" class="on">Rent</button><button data-v="own">Own</button></span></div>
+    <div class="toggle-row"><span class="city">Chennai</span>
+      <span class="seg" data-own="chennai"><button data-v="rent" class="on">Rent</button><button data-v="own">Own</button></span></div>
+    <div class="toggle-row"><span class="city">Zagreb</span>
+      <span class="seg" data-own="zagreb"><button data-v="rent" class="on">Rent</button><button data-v="own">Own</button></span></div>
+    <div class="hint field" style="font-size:.74rem;color:var(--ink-soft)">“Own” assumes a cash purchase: the purchase price is added to the required nest egg and monthly cost drops to taxes/upkeep.</div>
+
+    <h2>Money</h2>
+    <div class="field">
+      <label for="savings">Current retirement savings (USD)</label>
+      <input type="number" id="savings" min="0" step="10000" value="500000">
+    </div>
+    <div class="field">
+      <label for="contrib">Monthly contribution (USD)</label>
+      <input type="number" id="contrib" min="0" step="250" value="3000">
+    </div>
+    <div class="field">
+      <label>Expected annual return <span class="range-val" id="retVal">6.5%</span></label>
+      <input type="range" id="expRet" min="2" max="10" step="0.5" value="6.5">
+      <div class="hint">Treat as a <em>real</em> (after-inflation) return so results read in today’s dollars. 4–5% conservative · 6–7% typical.</div>
+    </div>
+    <div class="field">
+      <label>Withdrawal rate <span class="range-val" id="wdVal">4.0%</span></label>
+      <input type="range" id="wdRate" min="2.5" max="6" step="0.25" value="4">
+      <div class="hint">The “4% rule”: nest egg = annual pre-tax spend ÷ this rate.</div>
+    </div>
+
+    <h2>Lifestyle</h2>
+    <div class="field">
+      <span class="seg seg3" data-life>
+        <button data-v="0.8">Low</button><button data-v="1" class="on">Medium</button><button data-v="1.35">High</button>
+      </span>
+      <div class="hint">Scales groceries, transport &amp; discretionary spend (not housing, healthcare, or school fees).</div>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <div class="main">
+
+    <div class="summary" id="summary"></div>
+
+    <div class="card">
+      <h2>Projected portfolio vs. required nest egg</h2>
+      <p class="sub">Solid line: your portfolio (savings + contributions compounding at the expected return, contributions stop at target retirement age). Dashed lines: nest egg each city requires. Where the solid line crosses a dashed line is the earliest you could retire there.</p>
+      <div id="chartWrap"><canvas id="chart" width="1200" height="460"></canvas></div>
+      <div class="legend" id="legend"></div>
+    </div>
+
+    <div class="card" style="padding:0; overflow:hidden;">
+      <table class="cmp" id="cmpTable"></table>
+    </div>
+
+    <details class="assump" id="assumpPanel">
+      <summary>Assumptions &amp; Sources — every editable figure below feeds the calculations</summary>
+      <div class="assump-body" id="assumpBody"></div>
+    </details>
+
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ================= FX (as of Jul 8, 2026) ================= */
+const FX = {
+  INR: 95.6,   // ₹ per USD — exchangerates.org.uk / Federal Reserve H.10, Jul 2026
+  EUR: 0.877   // € per USD — Wise / XE mid-market, Jul 2026
+};
+
+/* ================= EDITABLE ASSUMPTIONS =================
+   Each entry: default value (USD unless noted), label, source + as-of note.
+   Values live in A[city][key] and are editable in the Assumptions panel. */
+const ASSUMPTIONS = {
+  bentonville: {
+    rent1:      { v: 1250,   l: "Rent, 1BR (mo)",            s: "RentCafe / Numbeo, Feb 2026. Range $1,130–1,768 city vs suburb." },
+    rent3:      { v: 2100,   l: "Rent, 3BR (mo)",            s: "Estimated from 1BR avg $1,247 & city mix; Zillow rentals ~$1,900–2,400." },
+    homeSmall:  { v: 300000, l: "Buy: 1–2BR condo",          s: "Estimated from Zillow median $488k for detached; condos/townhomes lower." },
+    homeLarge:  { v: 489500, l: "Buy: 3BR house",            s: "Houzeo/Zillow median sale price, 2026 (≈$225/sq ft). Up 4.6–8.8% YoY." },
+    carryPct:   { v: 1.3,    l: "Own: carrying cost %/yr",   s: "Benton Co. property tax ~0.6% + insurance + maintenance." },
+    utilities:  { v: 320,    l: "Utilities+internet (mo)",   s: "RentCafe energy ~$215/mo + internet/phone; ~1% above US avg." },
+    grocAdult:  { v: 400,    l: "Groceries / adult (mo)",    s: "RentCafe/areavibes: ~6% below US average." },
+    transport:  { v: 450,    l: "Transport / adult (mo)",    s: "Car-dependent: payment/depreciation, fuel, insurance. AAA-style estimate." },
+    misc:       { v: 500,    l: "Discretionary / adult (mo)",s: "Dining, entertainment, household, personal care — mid US-cost city." },
+    hcAdult:    { v: 650,    l: "Healthcare / adult (mo)",   s: "Pre-65 unsubsidized ACA silver ~$600–700 + OOP; Medicare 65+ ≈ $350–450 all-in." },
+    hcChild:    { v: 300,    l: "Healthcare / child (mo)",   s: "ACA child premium + typical OOP." },
+    school:     { v: 0,      l: "School / child (yr)",       s: "Public schools free (property-tax funded); Bentonville district well rated." },
+    taxRate:    { v: 13,     l: "Eff. tax on withdrawals %", s: "US federal ~10–12% eff. on moderate 401k/IRA draw + AR ≤3.9% (SS exempt, $6k retirement exclusion/person — AARP/Kiplinger 2026)." }
+  },
+  chennai: {
+    rent1:      { v: 200,    l: "Rent, 1BHK good area (mo)",    s: "Numbeo Jun 2026: center ₹13.4k, outer ₹7.7k; good-locality 1BHK ≈ ₹19k." },
+    rent3:      { v: 470,    l: "Rent, 3BHK good area (mo)",    s: "Numbeo: center 3BHK ₹34k; Adyar/Besant Nagar-tier ₹40–60k. ≈₹45k." },
+    homeSmall:  { v: 90000,  l: "Buy: 1–2BHK flat",             s: "₹52L+ for 1BHK (99acres); 2BHK good area ~₹80–95L." },
+    homeLarge:  { v: 200000, l: "Buy: 3BHK good area",          s: "₹4.5k–15k/sq ft (Sobha/pavani); 1,500 sq ft in Adyar-tier ≈ ₹1.8–2.2 cr." },
+    carryPct:   { v: 0.6,    l: "Own: carrying cost %/yr",      s: "Low property tax + maintenance/society charges." },
+    utilities:  { v: 70,     l: "Utilities+internet (mo)",      s: "NoBroker ₹2–5k typical; EB with regular AC use + broadband + gas ≈ ₹6.5k." },
+    grocAdult:  { v: 90,     l: "Groceries / adult (mo)",       s: "Quality local basket ~₹20–25k/mo for a family of 3 (NoBroker/Jupiter 2026). Imported/Western goods cost far more." },
+    transport:  { v: 50,     l: "Transport / adult (mo)",       s: "Autos/metro ₹1.5–2.5k (NoBroker); incl. own-car fuel or occasional cabs." },
+    misc:       { v: 140,    l: "Discretionary / adult (mo)",   s: "Dining ₹500–1,200 for two mid-range; household help ₹5–10k/mo; entertainment." },
+    hcAdult:    { v: 60,     l: "Healthcare / adult (mo)",      s: "Family floater ~₹50k–100k/yr for 50s couple + cheap OOP (GP $5–15, specialist ~$25 — Alea/Insubuy 2026). Buy before 60 — insurers restrict later." },
+    hcChild:    { v: 25,     l: "Healthcare / child (mo)",      s: "Child rider on family floater + OOP." },
+    school:     { v: 3600,   l: "School / child (yr)",          s: "Good private CBSE/ICSE ₹1.5–4L/yr (≈₹3.4L used). International/IB runs $12.9k–29k (AISC — Tutopiya 2026) if you want US-style curriculum." },
+    taxRate:    { v: 18,     l: "Eff. tax on withdrawals %",    s: "Once ROR, India taxes worldwide income at slabs (0→30% above ₹24L, new regime FY26-27, ClearTax). US-India treaty + FTC prevent double tax; SS taxable only in US (treaty Art. 20)." }
+  },
+  zagreb: {
+    rent1:      { v: 800,    l: "Rent, 1BR center (mo)",     s: "Wise/CroatiaWise 2026: €600–750 center older stock. ≈€700." },
+    rent3:      { v: 1425,   l: "Rent, 3BR (mo)",            s: "CroatiaWise: larger/nicer flats €850–1,200; family 3BR ≈ €1,250." },
+    homeSmall:  { v: 219000, l: "Buy: 50 m² flat",           s: "€3,842/m² Zagreb avg asking, Mar 2026 (nekretnine.hr; +15.7% YoY)." },
+    homeLarge:  { v: 372000, l: "Buy: 85 m² flat",           s: "Same €3,842/m² basis; Trešnjevka-jug up to €4,473/m²." },
+    carryPct:   { v: 1.0,    l: "Own: carrying cost %/yr",   s: "Maintenance/pričuva + utilities uplift + new property tax." },
+    utilities:  { v: 280,    l: "Utilities+internet (mo)",   s: "Numbeo/Wise: ~€220 utilities + internet/phone; winter heating spikes." },
+    grocAdult:  { v: 280,    l: "Groceries / adult (mo)",    s: "Wise: single ex-rent ~£714/mo; groceries share for EU mid-cost city." },
+    transport:  { v: 90,     l: "Transport / adult (mo)",    s: "ZET monthly pass ~€40–50 + occasional taxi/car share." },
+    misc:       { v: 350,    l: "Discretionary / adult (mo)",s: "Dining/culture; Zagreb cheaper than W. Europe, pricier than Chennai." },
+    hcAdult:    { v: 230,    l: "Healthcare / adult (mo)",   s: "HZZO: 16.5% on assessment base ⇒ €125–329/mo for foreign-pension residents + dopunsko €15/mo (expatincroatia.com, 2026)." },
+    hcChild:    { v: 40,     l: "Healthcare / child (mo)",   s: "Children covered via HZZO once resident; dopunsko + OOP buffer." },
+    school:     { v: 10000,  l: "School / child (yr)",       s: "Mid-range international ≈€9k (range €5–15k, expatlife.ai); AISZ flagship (IB, English) €18.5k–20.7k/yr 2026-27 (aisz.hr)." },
+    taxRate:    { v: 20,     l: "Eff. tax on withdrawals %", s: "Croatia taxes foreign pensions at 20–30% on 50% of the amount (≈10–15% eff.) + US federal top-up. US-Croatia treaty signed 2022, NOT yet in force — FTC is the only relief (Bright!Tax 2026)." }
+  }
+};
+
+const CITIES = [
+  { key: "bentonville", name: "Bentonville", country: "USA · USD", color: "#2563eb", cls: "bent", cur: "USD" },
+  { key: "chennai",     name: "Chennai",     country: "India · INR", color: "#d97706", cls: "chen", cur: "INR" },
+  { key: "zagreb",      name: "Zagreb",      country: "Croatia · EUR", color: "#0d9488", cls: "zag", cur: "EUR" }
+];
+
+/* ================= STATE ================= */
+const S = {
+  curAge: 40, retAge: 60, adults: 2, children: 1,
+  savings: 500000, contrib: 3000, expRet: 6.5, wdRate: 4, lifestyle: 1,
+  own: { bentonville: false, chennai: false, zagreb: false }
+};
+// live assumption values
+const A = {};
+for (const c in ASSUMPTIONS) { A[c] = {}; for (const k in ASSUMPTIONS[c]) A[c][k] = ASSUMPTIONS[c][k].v; }
+
+/* ================= FORMATTERS ================= */
+const fmtUSD = n => "$" + Math.round(n).toLocaleString("en-US");
+const fmtUSD0 = n => n >= 1e6 ? "$" + (n/1e6).toFixed(2) + "M" : fmtUSD(n);
+function fmtLocal(cur, usd) {
+  if (cur === "INR") return "₹" + Math.round(usd * FX.INR).toLocaleString("en-IN");
+  if (cur === "EUR") return "€" + Math.round(usd * FX.EUR).toLocaleString("en-US");
+  return "";
+}
+const pct = n => n.toFixed(1) + "%";
+
+/* ================= CALCULATIONS ================= */
+function cityCalc(cityKey) {
+  const a = A[cityKey];
+  const fam = S.adults + S.children;
+  const large = fam >= 3;
+  const own = S.own[cityKey];
+
+  const homePrice = large ? a.homeLarge : a.homeSmall;
+  const housing = own ? homePrice * (a.carryPct/100) / 12
+                      : (large ? a.rent3 : a.rent1);
+
+  const groceries = (a.grocAdult * S.adults + a.grocAdult * 0.6 * S.children) * S.lifestyle;
+  const transport = a.transport * S.adults * S.lifestyle;
+  const misc      = (a.misc * S.adults + a.misc * 0.5 * S.children) * S.lifestyle;
+  const utilities = a.utilities;
+  const living    = utilities + groceries + transport + misc;
+
+  const healthcare = a.hcAdult * S.adults + a.hcChild * S.children;
+  const education  = (a.school * S.children) / 12;
+
+  const monthlySpend = housing + living + healthcare + education;
+  const annualSpend  = monthlySpend * 12;
+  const taxRate      = a.taxRate / 100;
+  const grossAnnual  = annualSpend / (1 - taxRate);           // pre-tax withdrawal needed
+  const nestEgg      = grossAnnual / (S.wdRate/100) + (own ? homePrice : 0);
+
+  return { housing, utilities, groceries, transport, misc, living, healthcare, education,
+           monthlySpend, annualSpend, grossAnnual, nestEgg, own, homePrice, large };
+}
+
+// portfolio value t years from now; contributions stop at target retirement age
+function portfolioAt(t) {
+  const r = S.expRet / 100;
+  const tc = Math.min(t, Math.max(0, S.retAge - S.curAge)); // contribution years
+  const g = y => Math.pow(1 + r, y);
+  let v = S.savings * g(t);
+  if (r === 0) v += S.contrib * 12 * tc;
+  else v += S.contrib * 12 * ((g(tc) - 1) / r) * g(t - tc);
+  return v;
+}
+
+function yearsToReach(target) {
+  for (let t = 0; t <= 60; t++) if (portfolioAt(t) >= target) return t;
+  return null;
+}
+
+/* ================= RENDER: SUMMARY ================= */
+function renderSummary(calcs) {
+  const el = document.getElementById("summary");
+  const yearsToRet = Math.max(0, S.retAge - S.curAge);
+  el.innerHTML = CITIES.map(c => {
+    const k = calcs[c.key];
+    const projected = portfolioAt(yearsToRet);
+    const delta = projected - k.nestEgg;
+    const yrs = yearsToReach(k.nestEgg);
+    const earliest = yrs === null ? "beyond age " + (S.curAge + 60) : "age " + (S.curAge + yrs);
+    return `<div class="sum-city ${c.cls}">
+      <h3>${c.name}</h3><div class="flag">${c.country}</div>
+      <div class="big">${fmtUSD(k.monthlySpend)}<small> /mo family spend</small></div>
+      <div class="mini">${fmtLocal(c.cur, k.monthlySpend) ? fmtLocal(c.cur, k.monthlySpend) + " · " : ""}Nest egg needed: <b>${fmtUSD0(k.nestEgg)}</b>${k.own ? " (incl. home purchase)" : ""}</div>
+      <span class="badge ${delta >= 0 ? "ok" : "short"}">${delta >= 0 ? "On track ✓ " + fmtUSD0(delta) + " cushion" : fmtUSD0(-delta) + " short at " + S.retAge}</span>
+      <div class="mini">Earliest retirement on current path: <b>${earliest}</b>${yrs !== null ? " (" + yrs + " yrs)" : ""}</div>
+    </div>`;
+  }).join("");
+}
+
+/* ================= RENDER: TABLE ================= */
+const NOTES = {
+  hcSystem: {
+    bentonville: "Private system. Pre-65: ACA marketplace (unsubsidized at higher income). 65+: Medicare + supplement. World-class access, highest cost of the three.",
+    chennai: "Private-led hybrid. Chennai is a top Indian medical hub (Apollo etc.); care is excellent and cheap (specialist ≈ $25, cardiac surgery <$15k vs $100k+ US). Local insurers may limit new policies at older ages — buy early or budget OOP.",
+    zagreb: "Public system (HZZO) + small private sector. Residents must enroll: 16.5% contribution on a capped base (≈€125–329/mo) + €15/mo dopunsko removes most co-pays. Good EU-standard care; some waits for specialists."
+  },
+  visa: {
+    bentonville: "US citizen — no visa needed. Only decision is state tax domicile.",
+    chennai: "If of Indian origin: OCI card = lifetime entry & indefinite stay (near-PR). Otherwise a 5-yr entry (X) visa renewed periodically — no dedicated retirement visa. Stay >182 days/yr → tax resident; ROR after ~2 yrs → worldwide income taxed.",
+    zagreb: "No retirement visa. Practical path: temporary residence via prepaid 1-yr lease or property ownership, renewed annually; permanent residence after 5 continuous yrs. Digital-nomad permit (12–18 mo) exempts remote *work* income but not pensions/investment income."
+  },
+  treaty: {
+    bentonville: "N/A — domestic. Arkansas exempts Social Security; $6k/person retirement-income exclusion; top state rate 3.9%.",
+    chennai: "US–India treaty IN FORCE. Social Security taxable only in US (Art. 20). IRA/401k draws taxable in India once ROR, with US foreign tax credit offsetting — you pay roughly the higher of the two rates, not both.",
+    zagreb: "US–Croatia treaty signed Dec 2022 but NOT YET IN FORCE. Croatia taxes foreign pensions (20–30% on half the amount); relief only via US foreign tax credit. Watch for ratification — it would materially improve this column."
+  },
+  fx: {
+    bentonville: "No FX risk. Full US banking/brokerage.",
+    chennai: "₹95.6/USD (Jul 2026). INR has depreciated vs USD long-term (~83→95 in 3 yrs) — good for USD spenders, bad for INR assets. NRE/NRO accounts; wire costs 0.5–1.5% unless using Wise. Some US brokerages restrict Indian-resident accounts — keep a US address/mail service.",
+    zagreb: "€0.88/USD (Jul 2026). EUR/USD swings ±10% in bad years — real purchasing-power risk on a USD portfolio. SEPA banking is easy; US brokerages generally tolerate EU residents better than Indian residents, but EU PRIIPs rules block buying US ETFs — hold individual stocks or US mutual funds opened before moving."
+  },
+  invest: {
+    bentonville: "401k/IRA/Roth fully intact, no reporting friction. Simplest possible structure.",
+    chennai: "US accounts stay tax-advantaged for the IRS, but India may tax gains inside them once you're ROR (treaty deferral is ambiguous — get an India-side CPA). FBAR + FATCA (Form 8938) for Indian accounts; avoid Indian mutual funds (PFIC nightmare for US filers).",
+    zagreb: "Same FBAR/FATCA duties for Croatian accounts. No treaty means Croatia can tax US-account withdrawals as pension income. Croatian voluntary pension funds exist but are PFIC-toxic to US persons — keep investments in US wrappers."
+  }
+};
+
+function renderTable(calcs) {
+  const t = document.getElementById("cmpTable");
+  const c = k => calcs[k]; // shorthand
+  const money = (fn, sub) => CITIES.map(ci => {
+    const v = fn(c(ci.key), ci);
+    return `<td class="num">${v}${sub ? `<span class="loc">${sub(c(ci.key), ci)}</span>` : ""}</td>`;
+  }).join("");
+  const notes = obj => CITIES.map(ci => `<td><span class="note" style="margin-top:0">${obj[ci.key]}</span></td>`).join("");
+  const section = label => `<tr class="section"><td colspan="4">${label}</td></tr>`;
+  const row = (label, cells) => `<tr><td class="rowlabel">${label}</td>${cells}</tr>`;
+
+  const yearsToRet = Math.max(0, S.retAge - S.curAge);
+  const projected = portfolioAt(yearsToRet);
+
+  let html = `<thead><tr><th style="width:22%"></th>${CITIES.map(ci =>
+    `<th><span class="dot" style="background:${ci.color}"></span>${ci.name}<span style="font-weight:450;color:var(--ink-soft);font-size:.76rem"> — ${ci.country}</span></th>`).join("")}</tr></thead><tbody>`;
+
+  html += section("Housing & monthly expenses");
+  html += row(`Housing (${CITIES.map(ci=>S.own[ci.key]?"own":"rent").join("/")}, ${c("bentonville").large ? "3BR" : "1BR"})`,
+    money((k)=> fmtUSD(k.housing) + "/mo" + (k.own ? ` <span class="note" style="display:inline">(upkeep on ${fmtUSD0(k.homePrice)} home)</span>` : ""),
+          (k,ci)=> fmtLocal(ci.cur,k.housing)));
+  html += row("Utilities, internet & phone", money(k=>fmtUSD(k.utilities)+"/mo", (k,ci)=>fmtLocal(ci.cur,k.utilities)));
+  html += row("Groceries", money(k=>fmtUSD(k.groceries)+"/mo", (k,ci)=>fmtLocal(ci.cur,k.groceries)));
+  html += row("Transportation", money(k=>fmtUSD(k.transport)+"/mo", (k,ci)=>fmtLocal(ci.cur,k.transport)));
+  html += row("Discretionary / household", money(k=>fmtUSD(k.misc)+"/mo", (k,ci)=>fmtLocal(ci.cur,k.misc)));
+
+  html += section("Healthcare");
+  html += row(`Family healthcare (${S.adults} adult${S.adults>1?"s":""}${S.children?`, ${S.children} child${S.children>1?"ren":""}`:""})`,
+    money(k=>fmtUSD(k.healthcare)+"/mo", (k,ci)=>fmtLocal(ci.cur,k.healthcare)));
+  html += row("System & access", notes(NOTES.hcSystem));
+
+  html += section("Taxes & residency");
+  html += row("Eff. tax on retirement withdrawals",
+    money((k,ci)=>`<b>${A[ci.key].taxRate}%</b> <span class="note" style="display:inline">→ gross ${fmtUSD(k.grossAnnual)}/yr for ${fmtUSD(k.annualSpend)}/yr net</span>`));
+  html += row("Visa / residency path", notes(NOTES.visa));
+  html += row("Double-taxation treaty", notes(NOTES.treaty));
+
+  html += section("Currency & banking");
+  html += row("FX & cross-border money", notes(NOTES.fx));
+
+  if (S.children > 0) {
+    html += section("Education");
+    html += row(`Schooling (${S.children} child${S.children>1?"ren":""})`,
+      money((k,ci)=> A[ci.key].school === 0 ? "Free (public)" : fmtUSD(A[ci.key].school * S.children) + "/yr",
+            (k,ci)=> A[ci.key].school === 0 ? "" : fmtLocal(ci.cur, A[ci.key].school * S.children)));
+    html += row("School options", notes({
+      bentonville: "Strong public district (property-tax funded, $0 tuition). Private options ~$8–15k/yr if wanted. US curriculum, college-track.",
+      chennai: "International (IB/IGCSE) schools $6k–29k/yr — AISC is the US-curriculum flagship. CBSE/state schools far cheaper but a big adjustment for US kids.",
+      zagreb: "AISZ (IB, English) €18.5–20.7k/yr; other international €5–15k. Croatian public schools free but Croatian-language."
+    }));
+  }
+
+  html += section("Investment structure");
+  html += row("US retirement accounts & reporting", notes(NOTES.invest));
+
+  html += section("Bottom line (computed from your levers)");
+  html += `<tr class="total"><td class="rowlabel">Total monthly spend</td>${CITIES.map(ci =>
+    `<td class="num"><b>${fmtUSD(c(ci.key).monthlySpend)}</b>/mo<span class="loc">${fmtLocal(ci.cur, c(ci.key).monthlySpend)} · ${fmtUSD(c(ci.key).annualSpend)}/yr</span></td>`).join("")}</tr>`;
+  html += row(`Required nest egg (${S.wdRate}% rule, grossed up for tax${Object.values(S.own).some(v=>v) ? "; + home if owning" : ""})`,
+    money(k=>`<b>${fmtUSD0(k.nestEgg)}</b>`));
+  html += row(`Projected portfolio at ${S.retAge} (in ${yearsToRet} yrs)`,
+    money(()=>fmtUSD0(projected)));
+  html += `<tr class="total"><td class="rowlabel">On track to retire at ${S.retAge}?</td>${CITIES.map(ci => {
+    const k = c(ci.key); const d = projected - k.nestEgg; const yrs = yearsToReach(k.nestEgg);
+    return `<td class="num">${d >= 0 ? `<span class="yes">Yes ✓</span> ${fmtUSD0(d)} cushion` : `<span class="no">No</span> — ${fmtUSD0(-d)} short`}
+      <span class="loc">Earliest feasible: ${yrs === null ? "60+ yrs away" : "age " + (S.curAge + yrs)}</span></td>`;
+  }).join("")}</tr>`;
+
+  html += "</tbody>";
+  t.innerHTML = html;
+}
+
+/* ================= RENDER: CHART ================= */
+function renderChart(calcs) {
+  const cv = document.getElementById("chart");
+  const dpr = window.devicePixelRatio || 1;
+  const W = cv.clientWidth || 1160, H = 460 / (1200 / (cv.clientWidth || 1200));
+  cv.width = W * dpr; cv.height = 420 * dpr;
+  cv.style.height = "420px";
+  const ctx = cv.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const height = 420;
+
+  const padL = 74, padR = 20, padT = 16, padB = 44;
+  const plotW = W - padL - padR, plotH = height - padT - padB;
+
+  const horizon = Math.max(S.retAge - S.curAge + 12, 25);
+  const endAge = Math.min(S.curAge + horizon, 92);
+  const years = endAge - S.curAge;
+
+  const targets = CITIES.map(ci => calcs[ci.key].nestEgg);
+  let maxY = Math.max(portfolioAt(years), ...targets) * 1.12;
+
+  const x = t => padL + (t / years) * plotW;
+  const y = v => padT + plotH - (v / maxY) * plotH;
+
+  ctx.clearRect(0, 0, W, height);
+  ctx.font = "11px -apple-system, sans-serif";
+
+  // gridlines + y labels
+  const step = niceStep(maxY / 5);
+  ctx.textAlign = "right"; ctx.textBaseline = "middle";
+  for (let v = 0; v <= maxY; v += step) {
+    ctx.strokeStyle = "#eceef1"; ctx.beginPath();
+    ctx.moveTo(padL, y(v)); ctx.lineTo(W - padR, y(v)); ctx.stroke();
+    ctx.fillStyle = "#6b7280";
+    ctx.fillText(v >= 1e6 ? "$" + (v/1e6).toFixed(1) + "M" : "$" + (v/1e3).toFixed(0) + "k", padL - 8, y(v));
+  }
+  // x labels (age)
+  ctx.textAlign = "center"; ctx.textBaseline = "top";
+  const xstep = years > 30 ? 10 : 5;
+  for (let t = 0; t <= years; t += xstep) {
+    ctx.fillStyle = "#6b7280";
+    ctx.fillText("age " + (S.curAge + t), x(t), padT + plotH + 8);
+    ctx.strokeStyle = "#f3f4f6"; ctx.beginPath();
+    ctx.moveTo(x(t), padT); ctx.lineTo(x(t), padT + plotH); ctx.stroke();
+  }
+  // axis titles
+  ctx.save();
+  ctx.fillStyle = "#6b7280"; ctx.textAlign = "center";
+  ctx.fillText("Age", padL + plotW/2, height - 14);
+  ctx.translate(14, padT + plotH/2); ctx.rotate(-Math.PI/2);
+  ctx.fillText("Portfolio value (today's $)", 0, 0);
+  ctx.restore();
+
+  // retirement age marker
+  const rt = S.retAge - S.curAge;
+  if (rt >= 0 && rt <= years) {
+    ctx.strokeStyle = "#9ca3af"; ctx.setLineDash([2,3]); ctx.beginPath();
+    ctx.moveTo(x(rt), padT); ctx.lineTo(x(rt), padT + plotH); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = "#6b7280"; ctx.textAlign = "left"; ctx.textBaseline = "top";
+    ctx.fillText("target: " + S.retAge, x(rt) + 4, padT);
+  }
+
+  // city target lines + crossing markers
+  CITIES.forEach((ci, i) => {
+    const tgt = calcs[ci.key].nestEgg;
+    ctx.strokeStyle = ci.color; ctx.setLineDash([6,5]); ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.moveTo(padL, y(tgt)); ctx.lineTo(W - padR, y(tgt)); ctx.stroke();
+    ctx.setLineDash([]);
+    const yrs = yearsToReach(tgt);
+    if (yrs !== null && yrs <= years) {
+      ctx.fillStyle = ci.color;
+      ctx.beginPath(); ctx.arc(x(yrs), y(tgt), 5, 0, Math.PI*2); ctx.fill();
+      ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5; ctx.stroke();
+    }
+  });
+
+  // portfolio curve
+  ctx.strokeStyle = "#111827"; ctx.lineWidth = 2.4; ctx.beginPath();
+  for (let t = 0; t <= years; t += 0.25) {
+    const px = x(t), py = y(Math.min(portfolioAt(t), maxY));
+    t === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+  }
+  ctx.stroke();
+
+  // legend
+  document.getElementById("legend").innerHTML =
+    `<span><i style="background:#111827"></i>Projected portfolio</span>` +
+    CITIES.map(ci => {
+      const yrs = yearsToReach(calcs[ci.key].nestEgg);
+      return `<span><i class="dash" style="border-color:${ci.color}"></i>${ci.name} target ${fmtUSD0(calcs[ci.key].nestEgg)}${yrs !== null ? " · reached age " + (S.curAge + yrs) : " · not reached"}</span>`;
+    }).join("");
+}
+
+function niceStep(raw) {
+  const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const n = raw / mag;
+  return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * mag;
+}
+
+/* ================= RENDER: ASSUMPTIONS PANEL ================= */
+function renderAssumptions() {
+  const el = document.getElementById("assumpBody");
+  let html = `<p>All monetary values are <b>USD per the unit shown</b> and editable — change any figure and the whole dashboard recalculates. FX used: <b>₹${FX.INR}/USD</b> and <b>€${FX.EUR}/USD</b> (as of Jul 8, 2026 — Federal Reserve H.10 / Wise mid-market).</p>`;
+  for (const ci of CITIES) {
+    html += `<h3 style="color:${ci.color}">${ci.name}</h3><table class="atab"><tr><th style="width:220px">Figure</th><th style="width:110px">Value (USD)</th><th>Source & as-of</th></tr>`;
+    for (const k in ASSUMPTIONS[ci.key]) {
+      const a = ASSUMPTIONS[ci.key][k];
+      html += `<tr><td>${a.l}</td><td><input type="number" step="any" data-city="${ci.key}" data-key="${k}" value="${A[ci.key][k]}"></td><td class="src">${a.s}</td></tr>`;
+    }
+    html += "</table>";
+  }
+  html += `<div class="footnote">
+    <b>Method notes:</b> Required nest egg = (annual spend ÷ (1 − effective tax rate)) ÷ withdrawal rate, plus the home purchase price when “Own” is selected (cash purchase assumed).
+    Projection compounds current savings and monthly contributions at the expected return; contributions stop at the target retirement age. Treat the return as after-inflation so everything reads in today's dollars.
+    Effective tax rates are rough blended estimates for a typical 401k/IRA drawdown — actual rates depend heavily on Roth/traditional mix, Social Security timing, and filing status; confirm with a cross-border tax professional before acting.
+    Cost data: Numbeo, RentCafe, Zillow/Houzeo, Wise, CroatiaWise, nekretnine.hr, expatincroatia.com, ClearTax, Bright!Tax, Tutopiya, aisz.hr — retrieved Jul 2026. Where sources disagreed, a midpoint was used and the range noted.
+    This is a planning estimate, not financial, tax, or immigration advice.</div>`;
+  el.innerHTML = html;
+
+  el.querySelectorAll("input[data-city]").forEach(inp => {
+    inp.addEventListener("input", () => {
+      const v = parseFloat(inp.value);
+      if (!isNaN(v) && v >= 0) { A[inp.dataset.city][inp.dataset.key] = v; recalc(false); }
+    });
+  });
+}
+
+/* ================= MASTER RECALC ================= */
+function recalc(rebuildAssump) {
+  const calcs = {};
+  for (const ci of CITIES) calcs[ci.key] = cityCalc(ci.key);
+  renderSummary(calcs);
+  renderTable(calcs);
+  renderChart(calcs);
+  if (rebuildAssump) renderAssumptions();
+}
+
+/* ================= WIRE UP CONTROLS ================= */
+function bindNum(id, key, min, max) {
+  document.getElementById(id).addEventListener("input", e => {
+    let v = parseFloat(e.target.value);
+    if (isNaN(v)) return;
+    v = Math.max(min, Math.min(max, v));
+    S[key] = v; recalc(false);
+  });
+}
+bindNum("curAge", "curAge", 18, 80);
+bindNum("adults", "adults", 1, 6);
+bindNum("children", "children", 0, 6);
+bindNum("savings", "savings", 0, 1e9);
+bindNum("contrib", "contrib", 0, 1e6);
+
+document.getElementById("retAge").addEventListener("input", e => {
+  S.retAge = +e.target.value;
+  document.getElementById("retAgeVal").textContent = S.retAge;
+  recalc(false);
+});
+document.getElementById("expRet").addEventListener("input", e => {
+  S.expRet = +e.target.value;
+  document.getElementById("retVal").textContent = S.expRet.toFixed(1) + "%";
+  recalc(false);
+});
+document.getElementById("wdRate").addEventListener("input", e => {
+  S.wdRate = +e.target.value;
+  document.getElementById("wdVal").textContent = S.wdRate.toFixed(1) + "%";
+  recalc(false);
+});
+
+document.querySelectorAll(".seg[data-own]").forEach(seg => {
+  seg.querySelectorAll("button").forEach(btn => {
+    btn.addEventListener("click", () => {
+      seg.querySelectorAll("button").forEach(b => b.classList.remove("on"));
+      btn.classList.add("on");
+      S.own[seg.dataset.own] = btn.dataset.v === "own";
+      recalc(false);
+    });
+  });
+});
+document.querySelectorAll(".seg[data-life] button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    btn.parentElement.querySelectorAll("button").forEach(b => b.classList.remove("on"));
+    btn.classList.add("on");
+    S.lifestyle = parseFloat(btn.dataset.v);
+    recalc(false);
+  });
+});
+
+window.addEventListener("resize", () => recalc(false));
+
+/* ================= INIT ================= */
+recalc(true);
+</script>
+</body>
+</html>

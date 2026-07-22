@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vishaal Ravikumar</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;}
+    html{scroll-behavior:smooth;}
+    body{background:#0a0908;color:#e8e4dc;font-family:'Georgia',serif;overflow-x:hidden;}
+
+    /* ── Kolam canvas: fixed full-screen background ── */
+    #k{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;}
+
+    /* ── Nav ── */
+    nav{
+      position:fixed;top:0;left:0;right:0;z-index:10;
+      display:flex;justify-content:space-between;align-items:center;
+      padding:28px 48px;
+    }
+    .nav-logo{
+      font-size:13px;letter-spacing:.3em;text-transform:uppercase;
+      color:#e8e4dc;opacity:0.7;text-decoration:none;
+    }
+    .nav-links{display:flex;gap:36px;}
+    .nav-links a{
+      font-size:11px;letter-spacing:.25em;text-transform:uppercase;
+      color:#e8e4dc;opacity:0.55;text-decoration:none;
+      transition:opacity .3s;
+    }
+    .nav-links a:hover{opacity:1;}
+
+    /* ── Hero ── */
+    #hero{
+      position:relative;z-index:1;
+      height:100vh;
+      display:flex;flex-direction:column;
+      justify-content:flex-end;
+      padding:0 48px 52px;
+      pointer-events:none;
+    }
+    .hero-name{
+      font-size:clamp(36px,5vw,64px);
+      font-weight:400;letter-spacing:-.01em;
+      color:#e8e4dc;line-height:1.05;
+      mix-blend-mode:normal;
+    }
+    .hero-role{
+      margin-top:10px;
+      font-size:12px;letter-spacing:.35em;text-transform:uppercase;
+      color:#9a8f80;font-family:'Georgia',serif;font-style:italic;
+    }
+    .hero-scroll{
+      margin-top:28px;
+      font-size:10px;letter-spacing:.3em;text-transform:uppercase;
+      color:#9a8f80;opacity:0.5;font-family:Georgia,serif;
+      pointer-events:all;cursor:pointer;
+      transition:opacity .3s;
+    }
+    .hero-scroll:hover{opacity:1;}
+
+    /* ── Content sections ── */
+    section{
+      position:relative;z-index:1;
+      padding:100px 48px;
+    }
+    section+section{border-top:1px solid rgba(232,228,220,0.08);}
+
+    .section-label{
+      font-size:10px;letter-spacing:.4em;text-transform:uppercase;
+      color:#9a8f80;margin-bottom:48px;font-family:Georgia,serif;
+    }
+
+    /* ── About ── */
+    #about .about-text{
+      max-width:520px;
+      font-size:clamp(18px,2.2vw,26px);
+      line-height:1.55;color:#c8c4bc;font-weight:400;
+    }
+    #about .about-text em{color:#e8e4dc;font-style:normal;}
+
+    /* ── Work ── */
+    .work-grid{
+      display:grid;
+      grid-template-columns:repeat(auto-fill,minmax(320px,1fr));
+      gap:2px;
+    }
+    .work-item{
+      background:rgba(232,228,220,0.03);
+      border:1px solid rgba(232,228,220,0.07);
+      padding:36px;
+      cursor:pointer;transition:background .3s;
+    }
+    .work-item:hover{background:rgba(232,228,220,0.07);}
+    .work-tag{
+      font-size:9px;letter-spacing:.35em;text-transform:uppercase;
+      color:#9a8f80;margin-bottom:16px;font-family:Georgia,serif;
+    }
+    .work-title{
+      font-size:20px;color:#e8e4dc;margin-bottom:10px;line-height:1.2;
+    }
+    .work-desc{font-size:13px;color:#7a7068;line-height:1.6;}
+    .work-year{
+      margin-top:24px;font-size:10px;letter-spacing:.2em;
+      color:#5a5048;font-family:Georgia,serif;
+    }
+
+    /* ── Contact ── */
+    #contact .contact-line{
+      font-size:clamp(24px,3vw,40px);
+      color:#c8c4bc;line-height:1.4;margin-bottom:48px;max-width:480px;
+    }
+    #contact .contact-line em{color:#e8e4dc;font-style:normal;}
+    .contact-links{display:flex;gap:32px;flex-wrap:wrap;}
+    .contact-links a{
+      font-size:11px;letter-spacing:.3em;text-transform:uppercase;
+      color:#9a8f80;text-decoration:none;
+      border-bottom:1px solid rgba(154,143,128,0.3);
+      padding-bottom:3px;transition:color .3s,border-color .3s;
+    }
+    .contact-links a:hover{color:#e8e4dc;border-color:rgba(232,228,220,0.5);}
+
+    /* ── Footer ── */
+    footer{
+      position:relative;z-index:1;
+      padding:32px 48px;
+      border-top:1px solid rgba(232,228,220,0.06);
+      display:flex;justify-content:space-between;align-items:center;
+    }
+    footer span{font-size:10px;letter-spacing:.2em;color:#3a3028;font-family:Georgia,serif;}
+
+    /* ── Click-to-start hint ── */
+    #start-hint{
+      position:fixed;bottom:32px;right:48px;z-index:20;
+      font-size:9px;letter-spacing:.3em;text-transform:uppercase;
+      color:#9a8f80;opacity:0.5;font-family:Georgia,serif;
+      transition:opacity 1s;pointer-events:none;
+    }
+    #cap{display:none;}
+  </style>
+</head>
+<body>
+
+<canvas id="k"></canvas>
+<div id="cap"></div>
+
+<nav>
+  <a class="nav-logo" href="#hero">VR</a>
+  <div class="nav-links">
+    <a href="#about">About</a>
+    <a href="#work">Work</a>
+    <a href="#contact">Contact</a>
+  </div>
+</nav>
+
+<section id="hero">
+  <h1 class="hero-name">Vishaal<br>Ravikumar</h1>
+  <p class="hero-role">Designer</p>
+  <p class="hero-scroll" onclick="document.getElementById('about').scrollIntoView({behavior:'smooth'})">
+    Scroll to explore
+  </p>
+</section>
+
+<section id="about" style="background:rgba(10,9,8,0.88);min-height:60vh;display:flex;flex-direction:column;justify-content:center;">
+  <p class="section-label">About</p>
+  <p class="about-text">
+    I design <em>experiences</em> that sit at the edge of culture and craft —
+    where visual systems become something people feel before they understand.
+    <br><br>
+    Based between ideas.
+  </p>
+</section>
+
+<section id="work" style="background:rgba(10,9,8,0.88);">
+  <p class="section-label">Selected Work</p>
+  <div class="work-grid">
+    <div class="work-item">
+      <p class="work-tag">Brand Identity</p>
+      <h3 class="work-title">Project One</h3>
+      <p class="work-desc">A short description of the work and what made it interesting.</p>
+      <p class="work-year">2024</p>
+    </div>
+    <div class="work-item">
+      <p class="work-tag">Digital Experience</p>
+      <h3 class="work-title">Project Two</h3>
+      <p class="work-desc">A short description of the work and what made it interesting.</p>
+      <p class="work-year">2024</p>
+    </div>
+    <div class="work-item">
+      <p class="work-tag">Art Direction</p>
+      <h3 class="work-title">Project Three</h3>
+      <p class="work-desc">A short description of the work and what made it interesting.</p>
+      <p class="work-year">2023</p>
+    </div>
+    <div class="work-item">
+      <p class="work-tag">Visual Systems</p>
+      <h3 class="work-title">Project Four</h3>
+      <p class="work-desc">A short description of the work and what made it interesting.</p>
+      <p class="work-year">2023</p>
+    </div>
+  </div>
+</section>
+
+<section id="contact" style="background:rgba(10,9,8,0.88);min-height:50vh;display:flex;flex-direction:column;justify-content:center;">
+  <p class="section-label">Contact</p>
+  <p class="contact-line">
+    Open to <em>new projects</em><br>and conversations.
+  </p>
+  <div class="contact-links">
+    <a href="mailto:vishaalravikumar@gmail.com">Email</a>
+    <a href="#" target="_blank">Instagram</a>
+    <a href="#" target="_blank">LinkedIn</a>
+  </div>
+</section>
+
+<footer>
+  <span>© 2026 Vishaal Ravikumar</span>
+  <span>Design</span>
+</footer>
+
+<div id="start-hint">Click anywhere for sound</div>
+
+<script>
+// ── Dot grid: 9×9 main body + 5-dot cross at each cardinal side ──
+const N=9, cc=4, cr=4;
+const DS=new Set();
+const hasDot=(r,c)=>DS.has(r+','+c);
+const addDot=(r,c)=>DS.add(r+','+c);
+
+for(let r=0;r<N;r++) for(let c=0;c<N;c++) addDot(r,c);
+addDot(-1,cc); addDot(-2,cc-1); addDot(-2,cc); addDot(-2,cc+1); addDot(-3,cc);
+addDot(N,cc); addDot(N+1,cc-1); addDot(N+1,cc); addDot(N+1,cc+1); addDot(N+2,cc);
+addDot(cr,-1); addDot(cr-1,-2); addDot(cr,-2); addDot(cr+1,-2); addDot(cr,-3);
+addDot(cr,N); addDot(cr-1,N+1); addDot(cr,N+1); addDot(cr+1,N+1); addDot(cr,N+2);
+
+const dots=[...[...DS].map(k=>{const[r,c]=k.split(',').map(Number);return[c,r];})];
+
+const hPairs=[];
+for(let r=-4;r<=N+3;r++) for(let c=-4;c<=N+3;c++)
+  if(hasDot(r,c)&&hasDot(r,c+1)) hPairs.push([[c,r],[c+1,r]]);
+const vPairs=[];
+for(let r=-4;r<=N+3;r++) for(let c=-4;c<=N+3;c++)
+  if(hasDot(r,c)&&hasDot(r+1,c)) vPairs.push([[c,r],[c,r+1]]);
+
+// ── Canvas: full viewport ──
+const canvas=document.getElementById('k');
+const ctx=canvas.getContext('2d');
+let W, H, SCALE, tx, ty;
+
+const allX=dots.map(d=>d[0]), allY=dots.map(d=>d[1]);
+const minX=Math.min(...allX),maxX=Math.max(...allX);
+const minY=Math.min(...allY),maxY=Math.max(...allY);
+const cX=(minX+maxX)/2, cY=(minY+maxY)/2;
+
+function resize(){
+  W=canvas.width=window.innerWidth;
+  H=canvas.height=window.innerHeight;
+  SCALE=Math.min(W,H)*0.78/Math.max(maxX-minX,maxY-minY);
+  tx=x=>W/2+(x-cX)*SCALE;
+  ty=y=>H/2+(y-cY)*SCALE;
+  [off,off2,fbk,px].forEach(c=>{c.width=W;c.height=H;});
+  px.width=Math.ceil(W/BLOCK); px.height=Math.ceil(H/BLOCK);
+}
+
+// ── Offscreen canvases ──
+const off=document.createElement('canvas');
+const octx=off.getContext('2d');
+const off2=document.createElement('canvas');
+const octx2=off2.getContext('2d');
+const fbk=document.createElement('canvas');
+const fctx=fbk.getContext('2d');
+
+// ── Pixelation ──
+const BLOCK=10;
+const px=document.createElement('canvas');
+const pctx=px.getContext('2d');
+function applyPixelation(){
+  pctx.drawImage(canvas,0,0,px.width,px.height);
+  ctx.imageSmoothingEnabled=false;
+  ctx.drawImage(px,0,0,W,H);
+  ctx.imageSmoothingEnabled=true;
+}
+
+resize();
+window.addEventListener('resize',resize);
+
+// ── Figure-8 ──
+function fig8(A,B,lr,n=64){
+  const[ax,ay]=A,[bx,by]=B;
+  const cx=(ax+bx)/2,cy=(ay+by)/2;
+  const dx=bx-ax,dy=by-ay,L=Math.hypot(dx,dy);
+  const ux=dx/L,uy=dy/L,nx=-uy,ny=ux;
+  const pts=[];
+  for(let i=0;i<=n;i++){
+    const t=i/n*2*Math.PI;
+    const lx=L/2*Math.sin(t),ly=lr*Math.sin(2*t);
+    pts.push([cx+lx*ux+ly*nx,cy+lx*uy+ly*ny]);
+  }
+  return pts;
+}
+
+function sortFromCenter(pairList){
+  return [...pairList].sort(([A,B],[C,D])=>{
+    const mx=(A[0]+B[0])/2-cX, my=(A[1]+B[1])/2-cY;
+    const nx=(C[0]+D[0])/2-cX, ny=(C[1]+D[1])/2-cY;
+    return (mx*mx+my*my)-(nx*nx+ny*ny);
+  });
+}
+
+const PATTERNS=[
+  {
+    name:'Sikku Kolam',
+    build:()=>sortFromCenter([...hPairs,...vPairs]).map(([A,B])=>fig8(A,B,0.26)),
+    lw:1.3, color:'rgba(240,236,224,0.85)',
+  },
+  {
+    name:'Kambi Kolam',
+    build:()=>{
+      const sel=[];
+      for(const p of hPairs) if(p[0][1]%2===0) sel.push(p);
+      for(const p of vPairs) if(p[0][0]%2===0) sel.push(p);
+      return sortFromCenter(sel).map(([A,B])=>fig8(A,B,0.42));
+    },
+    lw:1.6, color:'rgba(240,236,224,0.9)',
+  },
+  {
+    name:'Padi Kolam',
+    build:()=>sortFromCenter([...hPairs,...vPairs]).map(([A,B])=>fig8(A,B,0.44)),
+    lw:1.1, color:'rgba(240,236,224,0.82)',
+  },
+];
+
+// ── Feedback ──
+function updateFeedback(strength=1){
+  fctx.clearRect(0,0,W,H);
+  fctx.save();
+  fctx.translate(W/2,H/2);
+  fctx.rotate(0.002*strength);
+  const s=1-0.022*strength;
+  fctx.scale(s,s);
+  fctx.globalAlpha=0.88+0.08*strength;
+  fctx.drawImage(canvas,-W/2,-H/2);
+  fctx.restore();
+}
+
+function drawDots(c2){
+  c2.save(); c2.fillStyle='#fff'; c2.shadowColor='#fff'; c2.shadowBlur=6;
+  for(const[dx,dy]of dots){c2.beginPath();c2.arc(tx(dx),ty(dy),2.0,0,Math.PI*2);c2.fill();}
+  c2.shadowBlur=0; c2.restore();
+}
+
+function strokeFull(c2,pts,lw,color){
+  c2.beginPath();
+  c2.moveTo(tx(pts[0][0]),ty(pts[0][1]));
+  for(let i=1;i<pts.length;i++) c2.lineTo(tx(pts[i][0]),ty(pts[i][1]));
+  c2.closePath(); c2.lineJoin='round'; c2.lineCap='round';
+  c2.lineWidth=lw; c2.strokeStyle=color; c2.stroke();
+}
+
+function strokePartial(c2,pts,frac,lw,color){
+  const end=Math.max(2,Math.round(frac*pts.length));
+  c2.beginPath();
+  c2.moveTo(tx(pts[0][0]),ty(pts[0][1]));
+  for(let i=1;i<end;i++) c2.lineTo(tx(pts[i][0]),ty(pts[i][1]));
+  c2.lineJoin='round'; c2.lineCap='round';
+  c2.lineWidth=lw; c2.strokeStyle=color; c2.stroke();
+}
+
+const DRAW_FRAMES=260, HOLD=110, FADE=130;
+const ease=(t)=>t<0.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
+let angle=0;
+const ROT_SPEED=0.004;
+
+let curPat=0, nxtPat=1;
+let curCurves=[], nxtCurves=[];
+let drawTick=0, drawnUpTo=0;
+let nxtDrawTick=0, nxtDrawnUpTo=0;
+let state='drawing', holdTick=0, fadeTick=0;
+const cap=document.getElementById('cap');
+
+function buildCurves(i){ return PATTERNS[i].build(); }
+
+function advanceDraw(curves,tick,drawnUpTo,targetCtx,patI){
+  const P=PATTERNS[patI];
+  const progress=ease(Math.min(tick/DRAW_FRAMES,1));
+  const pos=progress*curves.length;
+  const complete=Math.floor(pos);
+  const frac=pos-complete;
+  while(drawnUpTo<complete){strokeFull(targetCtx,curves[drawnUpTo],P.lw,P.color);drawnUpTo++;}
+  return {drawnUpTo,done:tick>=DRAW_FRAMES,partialIdx:complete,partialFrac:frac};
+}
+
+function render(fadeOld,nxtPartialIdx,nxtPartialFrac,curPartialIdx,curPartialFrac){
+  ctx.fillStyle='#0a0908'; ctx.fillRect(0,0,W,H);
+  ctx.drawImage(fbk,0,0);
+  ctx.save();
+  ctx.translate(W/2,H/2); ctx.rotate(angle); ctx.translate(-W/2,-H/2);
+  if(fadeOld<1){ctx.globalAlpha=1-fadeOld;ctx.drawImage(off,0,0);ctx.globalAlpha=1;}
+  ctx.drawImage(off2,0,0);
+  if(nxtPartialIdx!=null&&nxtPartialFrac>0&&nxtPartialIdx<nxtCurves.length){
+    const P=PATTERNS[nxtPat];
+    strokePartial(ctx,nxtCurves[nxtPartialIdx],nxtPartialFrac,P.lw,P.color);
+  }
+  if(curPartialIdx!=null&&curPartialFrac>0&&curPartialIdx<curCurves.length){
+    const P=PATTERNS[curPat];
+    strokePartial(ctx,curCurves[curPartialIdx],curPartialFrac,P.lw,P.color);
+  }
+  ctx.restore();
+}
+
+function rotatedDots(){
+  ctx.save(); ctx.translate(W/2,H/2); ctx.rotate(angle); ctx.translate(-W/2,-H/2);
+  drawDots(ctx); ctx.restore();
+}
+
+function animate(){
+  if(state==='drawing'){
+    const r=advanceDraw(curCurves,drawTick,drawnUpTo,octx,curPat);
+    drawnUpTo=r.drawnUpTo; drawTick++;
+    render(0,null,0,r.partialIdx,r.partialFrac);
+    rotatedDots();
+    if(r.done){state='holding';holdTick=0;}
+  } else if(state==='holding'){
+    render(0,null,0,null,0); rotatedDots();
+    if(++holdTick>=HOLD){
+      nxtPat=(curPat+1)%PATTERNS.length;
+      nxtCurves=buildCurves(nxtPat);
+      nxtDrawTick=0; nxtDrawnUpTo=0;
+      octx2.clearRect(0,0,W,H);
+      cap.style.opacity='0';
+      setTimeout(()=>{cap.textContent=PATTERNS[nxtPat].name;cap.style.opacity='1';},400);
+      state='crossfade'; fadeTick=0;
+    }
+  } else if(state==='crossfade'){
+    const fadeOld=ease(fadeTick/FADE);
+    const r=advanceDraw(nxtCurves,nxtDrawTick,nxtDrawnUpTo,octx2,nxtPat);
+    nxtDrawnUpTo=r.drawnUpTo; nxtDrawTick++;
+    render(fadeOld,r.partialIdx,r.partialFrac,null,0);
+    updateFeedback(1-ease(fadeTick/FADE));
+    rotatedDots();
+    fadeTick++;
+    if(fadeTick>FADE){
+      curPat=nxtPat; curCurves=nxtCurves;
+      drawnUpTo=nxtDrawnUpTo; drawTick=nxtDrawTick;
+      octx.clearRect(0,0,W,H); octx.drawImage(off2,0,0);
+      octx2.clearRect(0,0,W,H); fctx.clearRect(0,0,W,H);
+      state=r.done?'holding':'drawing'; holdTick=0;
+    }
+  }
+
+  angle+=ROT_SPEED;
+  updateSynth();
+
+  const pulse=0.5+0.5*Math.sin(Date.now()/2000*Math.PI);
+  ctx.fillStyle=`rgba(10,9,8,${0.22*pulse})`;
+  ctx.fillRect(0,0,W,H);
+
+  applyPixelation();
+  requestAnimationFrame(animate);
+}
+
+// ── Audio ──
+const BPM=96;
+let audioCtx=null, nextBeat=0, beatNum=0, master, synth=null;
+
+function noise(ac,dur){
+  const buf=ac.createBuffer(1,ac.sampleRate*dur,ac.sampleRate);
+  const d=buf.getChannelData(0);
+  for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1;
+  return buf;
+}
+
+function kick(t){
+  const sub=audioCtx.createOscillator(), sg=audioCtx.createGain();
+  sub.connect(sg); sg.connect(master);
+  sub.frequency.setValueAtTime(120,t);
+  sub.frequency.exponentialRampToValueAtTime(22,t+0.12);
+  sg.gain.setValueAtTime(2.2,t);
+  sg.gain.exponentialRampToValueAtTime(0.001,t+0.5);
+  sub.start(t); sub.stop(t+0.55);
+  const click=audioCtx.createOscillator(), cg=audioCtx.createGain();
+  click.type='square'; click.frequency.value=900;
+  click.connect(cg); cg.connect(master);
+  cg.gain.setValueAtTime(0.9,t);
+  cg.gain.exponentialRampToValueAtTime(0.001,t+0.018);
+  click.start(t); click.stop(t+0.02);
+}
+
+function scheduleBeat(beat,t){
+  const b=beat%4;
+  if(b===0||b===2) kick(t);
+}
+
+function buildSynth(){
+  const drone1=audioCtx.createOscillator(),drone2=audioCtx.createOscillator(),fifth=audioCtx.createOscillator();
+  drone1.type=drone2.type=fifth.type='sawtooth';
+  drone1.frequency.value=55; drone2.frequency.value=55.8; fifth.frequency.value=82.4;
+  const droneGain=audioCtx.createGain(); droneGain.gain.value=0.22;
+  drone1.connect(droneGain); drone2.connect(droneGain); fifth.connect(droneGain);
+
+  const pad1=audioCtx.createOscillator(),pad2=audioCtx.createOscillator();
+  pad1.type=pad2.type='triangle';
+  pad1.frequency.value=110; pad2.frequency.value=165;
+  const padGain=audioCtx.createGain(); padGain.gain.value=0;
+  pad1.connect(padGain); pad2.connect(padGain);
+
+  const filter=audioCtx.createBiquadFilter();
+  filter.type='lowpass'; filter.frequency.value=180; filter.Q.value=5;
+  droneGain.connect(filter); padGain.connect(filter);
+
+  const lfo=audioCtx.createOscillator(),lfoGain=audioCtx.createGain();
+  lfo.frequency.value=0.25; lfoGain.gain.value=120;
+  lfo.connect(lfoGain); lfoGain.connect(filter.frequency);
+
+  const delay=audioCtx.createDelay(2); delay.delayTime.value=0.38;
+  const fb2=audioCtx.createGain(); fb2.gain.value=0.32;
+  const wet=audioCtx.createGain(); wet.gain.value=0.28;
+  delay.connect(fb2); fb2.connect(delay); delay.connect(wet);
+  filter.connect(master); filter.connect(delay); wet.connect(master);
+
+  drone1.start(); drone2.start(); fifth.start();
+  pad1.start(); pad2.start(); lfo.start();
+  return {filter,padGain,lfo};
+}
+
+function updateSynth(){
+  if(!synth||!audioCtx) return;
+  const {filter,padGain,lfo}=synth;
+  const now=audioCtx.currentTime, tau=0.12;
+  lfo.frequency.setTargetAtTime(0.15+angle*0.08,now,1);
+  if(state==='drawing'){
+    const prog=ease(Math.min(drawTick/DRAW_FRAMES,1));
+    filter.frequency.setTargetAtTime(200+prog*4800,now,tau);
+    filter.Q.setTargetAtTime(5-prog*2,now,tau);
+    padGain.gain.setTargetAtTime(prog*0.18,now,tau);
+  } else if(state==='holding'){
+    const p=0.5+0.5*Math.sin(Date.now()/2000*Math.PI);
+    filter.frequency.setTargetAtTime(4200+p*1800,now,0.3);
+    padGain.gain.setTargetAtTime(0.18,now,tau);
+  } else if(state==='crossfade'){
+    const f=ease(fadeTick/FADE);
+    filter.frequency.setTargetAtTime(5000*(1-f)+180,now,tau);
+    filter.Q.setTargetAtTime(3+f*6,now,tau);
+    padGain.gain.setTargetAtTime(0.18*(1-f),now,tau);
+  }
+}
+
+function scheduleTick(){
+  const lookahead=0.1, interval=60/BPM;
+  while(nextBeat<audioCtx.currentTime+lookahead){
+    scheduleBeat(beatNum,nextBeat);
+    nextBeat+=interval; beatNum++;
+  }
+  setTimeout(scheduleTick,25);
+}
+
+function startBeat(){
+  if(audioCtx) return;
+  audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+  master=audioCtx.createGain();
+  const lp=audioCtx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=9000;
+  master.connect(lp); lp.connect(audioCtx.destination); master.gain.value=0.75;
+  synth=buildSynth();
+  nextBeat=audioCtx.currentTime+0.05; beatNum=0;
+  scheduleTick();
+  document.getElementById('start-hint').style.opacity='0';
+}
+
+document.addEventListener('click',startBeat,{once:true});
+document.addEventListener('keydown',startBeat,{once:true});
+
+curCurves=buildCurves(curPat);
+cap.textContent=PATTERNS[curPat].name;
+animate();
+</script>
+</body>
+</html>
